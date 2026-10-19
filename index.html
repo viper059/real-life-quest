@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Real-life Quest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Mitr:wght@400;500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --wood-900:#2a1b11;--wood-800:#3a2618;--wood-700:#5a3d27;--wood-line:#8a6a3a;
+  --parchment-100:#fbf3df;--parchment-200:#f3e6c8;--parchment-300:#f1e4c6;--parchment-track:#e6d5ae;--parchment-pin:#d8c39a;
+  --brass-500:#c9a86a;--brass-600:#b0905a;
+  --ink:#2a1e14;--ink-soft:#4a3726;--ink-muted:#6b5540;
+  --on-wood:#fbf3df;--on-wood-muted:#d9c49c;--nav-idle:#c9b48f;
+  --gold-500:#e8b13a;--gold-ink:#8a5a0b;--exp:#d08a1c;
+  --teal-600:#1f6f6b;--teal-tint:#e4efe9;--teal-ink:#1f5a45;--crystal:#8fd3ce;
+  --danger:#b3261e;--danger-tint:#f6e3da;--danger-ink:#8a3a0b;
+  --font-display:"Mitr","IBM Plex Sans Thai",sans-serif;
+  --font-body:"IBM Plex Sans Thai",system-ui,sans-serif;
+  --font-rpg:"Cinzel",Georgia,serif;
+  --r-sm:6px;--r-md:10px;--r-lg:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--parchment-300);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.55}
+button,input,select,textarea{font:inherit}
+a{color:var(--teal-600)}
+.hidden{display:none!important}
+h1,h2,h3{font-family:var(--font-display);margin:0;line-height:1.3}
+
+/* Header */
+.top{background:var(--wood-800);border-bottom:3px solid var(--brass-500);color:var(--on-wood);position:sticky;top:0;z-index:20}
+.top-in{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lv{width:38px;height:38px;border-radius:50%;background:var(--wood-700);border:2px solid var(--gold-500);display:flex;align-items:center;justify-content:center;font-family:var(--font-rpg);font-weight:700;color:var(--gold-500);flex:none}
+.who{display:flex;flex-direction:column;min-width:0;flex:1}
+.who b{font-family:var(--font-display);font-weight:500;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who span{font-size:12px;color:var(--on-wood-muted)}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--wood-900);border:1px solid var(--wood-line);border-radius:999px;padding:4px 10px;font-family:var(--font-rpg);font-weight:700;font-size:13px;white-space:nowrap}
+.chip.g{color:var(--gold-500)}.chip.c{color:var(--crystal)}
+.icon-btn{background:transparent;border:1px solid var(--wood-line);color:var(--on-wood-muted);border-radius:var(--r-md);min-height:36px;padding:0 10px;cursor:pointer}
+
+/* Nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:var(--wood-900);border-top:2px solid var(--brass-500);padding:6px 4px calc(10px + env(safe-area-inset-bottom))}
+nav.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:48px;background:none;border:0;color:var(--nav-idle);font-size:11px;cursor:pointer}
+nav.tabs button[aria-current="page"]{color:var(--gold-500);font-weight:600}
+nav.tabs svg{width:22px;height:22px}
+main{max-width:1200px;margin:0 auto;padding:16px 16px 110px}
+@media (min-width:900px){
+  nav.tabs{position:sticky;top:61px;bottom:auto;border-top:0;border-bottom:2px solid var(--brass-500);justify-content:center;gap:4px;padding:6px 16px}
+  nav.tabs button{flex:none;flex-direction:row;gap:8px;font-size:14px;padding:0 16px;border-radius:var(--r-md)}
+  nav.tabs button[aria-current="page"]{background:var(--wood-800)}
+  main{padding-bottom:40px}
+}
+
+/* Common */
+.card{background:var(--parchment-100);border:1.5px solid var(--brass-500);border-radius:var(--r-lg);padding:14px;box-shadow:0 2px 0 var(--parchment-pin)}
+.section{display:flex;flex-direction:column;gap:12px;margin-bottom:22px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.between{justify-content:space-between}
+.muted{color:var(--ink-muted)}.small{font-size:12px}
+.btn{font-weight:600;min-height:44px;padding:0 16px;border-radius:var(--r-md);border:0;cursor:pointer;font-size:14px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn.primary{background:var(--gold-500);color:var(--ink)}
+.btn.action{background:var(--teal-600);color:#fff}
+.btn.urgent{background:var(--danger);color:#fff}
+.btn.sec{background:var(--parchment-100);color:var(--ink-soft);border:1.5px solid var(--brass-600)}
+.btn:focus-visible,.pill:focus-visible,nav.tabs button:focus-visible{outline:3px solid var(--teal-600);outline-offset:2px}
+.pill{border:1.5px solid var(--brass-600);background:var(--parchment-100);color:var(--ink-soft);border-radius:999px;min-height:36px;padding:0 14px;cursor:pointer;font-size:13px}
+.pill[aria-pressed="true"]{background:var(--wood-800);border-color:var(--wood-800);color:var(--on-wood);font-weight:600}
+.tag{font-size:11px;font-weight:600;border-radius:var(--r-sm);padding:2px 8px;white-space:nowrap}
+.rank{font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--ink-muted);border:1px solid var(--brass-600);border-radius:var(--r-sm);padding:1px 7px}
+.gold{font-family:var(--font-rpg);font-weight:700;color:var(--gold-ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.empty{padding:20px;text-align:center;color:var(--ink-muted);border:1.5px dashed var(--brass-600);border-radius:var(--r-lg)}
+.bar{height:8px;border-radius:4px;background:var(--parchment-track);overflow:hidden}.bar>div{height:8px;border-radius:4px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-soft)}
+label.f input,label.f select,label.f textarea{border:1.5px solid var(--brass-600);border-radius:var(--r-md);padding:10px 12px;background:#fffdf6;color:var(--ink);min-height:44px}
+label.f input:focus,label.f select:focus,label.f textarea:focus{outline:2px solid var(--teal-600);outline-offset:1px}
+.dash{border-top:1px dashed var(--brass-500);padding-top:8px}
+
+/* Quest card */
+.q{display:flex;flex-direction:column;gap:8px}
+.q h3{font-weight:500;font-size:17px}
+.q.is-urgent{border:2px solid var(--danger);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(179,38,30,.45)}50%{box-shadow:0 0 0 6px rgba(179,38,30,0)}}
+@media (prefers-reduced-motion:reduce){.q.is-urgent{animation:none}}
+.q .foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
+
+/* Wallet */
+.balance{background:var(--wood-800);color:var(--on-wood);border:1.5px solid var(--gold-500);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:4px}
+.balance .big{font-family:var(--font-rpg);font-weight:700;font-size:40px;color:var(--gold-500);line-height:1.1}
+.tx{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px dashed var(--parchment-pin)}
+.tx .amt{font-family:var(--font-rpg);font-weight:700;white-space:nowrap}
+
+/* Auth */
+.auth{max-width:420px;margin:40px auto}
+.brand{font-family:var(--font-rpg);font-weight:700;color:var(--gold-500);font-size:20px;letter-spacing:.04em}
+
+/* Modal + toast */
+dialog{border:0;padding:0;background:transparent;max-width:520px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(42,27,17,.55)}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--wood-900);color:var(--on-wood);border:1.5px solid var(--gold-500);border-radius:var(--r-md);padding:10px 16px;z-index:50;max-width:calc(100% - 32px)}
+.toast.err{border-color:var(--danger)}
+@media (min-width:900px){.toast{bottom:24px}}
+</style>
+</head>
+<body>
+
+<!-- Signed out -->
+<section id="authView" class="hidden">
+  <div class="auth">
+    <div class="card" style="display:flex;flex-direction:column;gap:14px">
+      <div><div class="brand">REAL-LIFE QUEST</div><p class="muted" style="margin:4px 0 0">รับเควสต์จริง ได้ Gold จริง เลเวลอัปจริง</p></div>
+      <div class="row" role="tablist" aria-label="เข้าสู่ระบบหรือสมัคร">
+        <button class="pill" role="tab" id="tabLogin" aria-pressed="true">เข้าสู่ระบบ</button>
+        <button class="pill" role="tab" id="tabSignup" aria-pressed="false">สมัครนักผจญภัย</button>
+      </div>
+      <form id="authForm" style="display:flex;flex-direction:column;gap:12px">
+        <label class="f hidden" id="usernameWrap">ชื่อผู้ใช้ (a–z, 0–9, _ 3–20 ตัว)
+          <input id="authUsername" autocomplete="username" pattern="[A-Za-z0-9_]{3,20}">
+        </label>
+        <label class="f">อีเมล<input id="authEmail" type="email" required autocomplete="email"></label>
+        <label class="f">รหัสผ่าน<input id="authPassword" type="password" required minlength="6" autocomplete="current-password"></label>
+        <button class="btn primary" id="authSubmit" type="submit">เข้าสู่ระบบ</button>
+        <p id="authMsg" class="small muted" role="status" style="margin:0"></p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- Signed in -->
+<div id="appView" class="hidden">
+  <header class="top">
+    <div class="top-in">
+      <div class="lv" id="hLevel" aria-label="เลเวล">1</div>
+      <div class="who"><b id="hName">…</b><span id="hSub">นักผจญภัย</span></div>
+      <span class="chip g" title="Gold ที่ใช้ได้"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></svg><span id="hGold">0</span></span>
+      <span class="chip c" title="Crystal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 3l7 6-7 12-7-12z"/><path d="M5 9h14"/></svg><span id="hCrystal">0</span></span>
+      <button class="icon-btn" id="signOut" type="button">ออก</button>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="เมนูหลัก">
+    <button data-tab="board" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>เควสต์</button>
+    <button data-tab="char"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>ตัวละคร</button>
+    <button data-tab="deck"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="12" height="15" rx="2"/><path d="M9 3h10a2 2 0 0 1 2 2v13"/></svg>การ์ดอาชีพ</button>
+    <button data-tab="guild"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg>กิลด์</button>
+    <button data-tab="wallet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg>กระเป๋า</button>
+  </nav>
+
+  <main>
+    <!-- Board -->
+    <section id="view-board">
+      <div class="section">
+        <div class="row between">
+          <h1 style="font-size:24px">กระดานเควสต์</h1>
+          <button class="btn primary" id="openPost" type="button">+ โพสต์เควสต์</button>
+        </div>
+        <div class="row" id="catFilters" aria-label="กรองหมวด"></div>
+        <div class="grid" id="boardList"></div>
+      </div>
+      <div class="section">
+        <h2 style="font-size:17px">เควสต์ที่ฉันรับ</h2>
+        <div class="grid" id="workingList"></div>
+      </div>
+      <div class="section">
+        <h2 style="font-size:17px">เควสต์ที่ฉันโพสต์</h2>
+        <div class="grid" id="postedList"></div>
+      </div>
+    </section>
+
+    <!-- Character -->
+    <section id="view-char" class="hidden">
+      <div class="section">
+        <h1 style="font-size:24px">ตัวละคร</h1>
+        <div class="card" style="display:flex;flex-direction:column;gap:12px">
+          <div class="row" style="gap:14px">
+            <div class="lv" style="width:64px;height:64px;font-size:20px" id="cLevel">1</div>
+            <div style="display:flex;flex-direction:column">
+              <h2 style="font-size:20px" id="cName">…</h2>
+              <span class="small muted" id="cUser">@</span>
+            </div>
+          </div>
+          <div>
+            <div class="row between small"><b style="font-family:var(--font-rpg)">BASE EXP</b><span class="muted" id="cExpText">0 / 100</span></div>
+            <div class="bar" role="progressbar" aria-label="Base EXP" id="cExpBar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="cExpFill" style="width:0;background:var(--exp)"></div></div>
+          </div>
+          <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+            <div style="background:var(--parchment-200);border-radius:8px;padding:8px"><div class="small muted">แรงก์</div><b class="gold" id="cRank">F</b></div>
+            <div style="background:var(--parchment-200);border-radius:8px;padding:8px"><div class="small muted">เควสต์สำเร็จ</div><b class="gold" id="cDone">0</b></div>
+            <div style="background:var(--parchment-200);border-radius:8px;padding:8px"><div class="small muted">อาชีพ</div><b id="cJob" style="font-size:13px">—</b></div>
+          </div>
+          <form id="nameForm" class="row dash" style="align-items:flex-end">
+            <label class="f" style="flex:1 1 200px">ชื่อที่แสดง<input id="nameInput" maxlength="40"></label>
+            <button class="btn sec" type="submit">บันทึก</button>
+          </form>
+        </div>
+        <div class="card" id="statPanel"></div>
+        <p class="small muted" style="margin:0">ได้ 3 แต้มทุกครั้งที่เลเวลอัป · ค่าในวงเล็บคือโบนัสจากการ์ดในเด็ค · ช่องอุปกรณ์จะมากับระบบร้านค้า</p>
+      </div>
+    </section>
+
+    <!-- Deck -->
+    <section id="view-deck" class="hidden">
+      <div class="section"><h1 style="font-size:24px">การ์ดอาชีพ</h1>
+        <div id="deckPanel"></div></div>
+      <div class="section"><h2 style="font-size:17px">คลังการ์ด</h2>
+        <div class="grid" id="cardList" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))"></div></div>
+    </section>
+
+    <!-- Guild + family -->
+    <section id="view-guild" class="hidden">
+      <div class="section"><h1 style="font-size:24px">กิลด์</h1><div id="guildPanel"></div></div>
+      <div class="section"><h2 style="font-size:19px">ครอบครัว</h2><div id="familyPanel"></div></div>
+    </section>
+
+    <!-- Wallet -->
+    <section id="view-wallet" class="hidden">
+      <div class="section">
+        <h1 style="font-size:24px">กระเป๋าเงิน</h1>
+        <div class="balance">
+          <span class="small" style="color:var(--on-wood-muted)">Gold ที่ใช้ได้</span>
+          <span class="big" id="wGold">0</span>
+          <span class="small" style="color:var(--on-wood-muted)" id="wBaht"></span>
+          <div class="row" style="border-top:1px solid var(--wood-700);margin-top:8px;padding-top:8px;gap:16px">
+            <span class="small" style="color:var(--on-wood-muted)">ล็อกอยู่ <b style="color:var(--on-wood)" id="wLocked">0</b> G</span>
+            <span class="small" style="color:var(--crystal)">Crystal <b id="wCrystal">0</b> · ถอนไม่ได้</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid" style="align-items:start">
+        <div class="card section" style="margin:0">
+          <h2 style="font-size:16px">ถอน Gold เป็นเงิน</h2>
+          <form id="wForm" style="display:flex;flex-direction:column;gap:10px">
+            <label class="f">จำนวน Gold<input id="wAmount" type="number" min="1" step="1" required inputmode="numeric"></label>
+            <label class="f">บัญชีปลายทาง (ใส่แค่ธนาคารและเลข 4 หลักท้าย)<input id="wBank" required maxlength="60" placeholder="เช่น กสิกร •••• 4417"></label>
+            <button class="btn action" type="submit">ส่งคำขอถอน</button>
+            <p class="small muted" style="margin:0" id="wRule"></p>
+          </form>
+          <div id="wList"></div>
+        </div>
+        <div class="card section" style="margin:0">
+          <h2 style="font-size:16px">รายการล่าสุด</h2>
+          <div id="txList"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Post quest -->
+<dialog id="postDlg" aria-labelledby="postTitle">
+  <form id="postForm" class="card" style="display:flex;flex-direction:column;gap:10px" method="dialog">
+    <h2 id="postTitle" style="font-size:19px">โพสต์เควสต์ใหม่</h2>
+    <label class="f">ชื่อเควสต์<input id="pTitle" required minlength="4" maxlength="120"></label>
+    <label class="f">รายละเอียด (สถานที่ เวลา ขอบเขตงาน)<textarea id="pDesc" rows="3" maxlength="2000"></textarea></label>
+    <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+      <label class="f">หมวด<select id="pCat"></select></label>
+      <label class="f">แรงก์<select id="pRank"><option>F</option><option selected>E</option><option>D</option><option>C</option><option>B</option><option>A</option><option>S</option></select></label>
+    </div>
+    <label class="f">รางวัล (Gold) — ระบบล็อกจากกระเป๋าคุณทันที<input id="pReward" type="number" min="1" step="1" required inputmode="numeric"></label>
+    <label class="row small" style="gap:8px"><input id="pUrgent" type="checkbox" style="width:20px;height:20px"> ด่วน — ต้องเสร็จภายใน
+      <select id="pUrgentMin" style="border:1.5px solid var(--brass-600);border-radius:8px;padding:4px 6px"><option value="30">30 นาที</option><option value="60" selected>1 ชม.</option><option value="120">2 ชม.</option><option value="240">4 ชม.</option></select></label>
+    <p class="small muted" id="pNote" style="margin:0"></p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn sec" type="button" id="postCancel">ยกเลิก</button>
+      <button class="btn primary" type="submit" id="postSubmit">โพสต์และล็อก Gold</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  const SUPABASE_URL = 'https://hkujzoluicokvvwlnffd.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_EqpS2q5qOoQfT0i3pFFgJQ_LKRJpKpN';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const CATS = {
+    general: { label: 'ทั่วไป', bg: '#efe6d2', fg: '#4a3726' },
+    home: { label: 'งานบ้าน', bg: '#e4efe9', fg: '#1f5a45' },
+    delivery: { label: 'ส่งของ', bg: '#f6e8cf', fg: '#7a4a06' },
+    tutor: { label: 'สอนพิเศษ', bg: '#e8e4f3', fg: '#3f3576' },
+    repair: { label: 'งานช่าง', bg: '#e3ecf3', fg: '#24486a' },
+    family: { label: 'ครอบครัว', bg: '#f3e3ec', fg: '#7a2e58' }
+  };
+  const TX = {
+    quest_escrow: 'ล็อกรางวัลเควสต์', quest_paid: 'จ่ายรางวัลเควสต์', quest_reward: 'รางวัลเควสต์',
+    quest_refund: 'คืน Gold เควสต์', withdraw_hold: 'ล็อกเพื่อถอน', withdraw_paid: 'ถอนสำเร็จ', withdraw_refund: 'คืน Gold (ถอนไม่ผ่าน)',
+    guild_contribute: 'สมทบกองทุนกิลด์', guild_refund: 'คืนเงินกองทุน (ปิดกิลด์)', guild_claim_paid: 'ได้รับเงินเคลมกองทุนกิลด์'
+  };
+  const STATS = [['str', 'STR'], ['agi', 'AGI'], ['vit', 'VIT'], ['int', 'INT'], ['dex', 'DEX'], ['luk', 'LUK']];
+  const RARITY = { N: '#6b5540', R: '#1f6f6b', SR: '#8a5a0b', SSR: '#b3261e' };
+  const CLAIM = { voting: 'กำลังโหวต', approved: 'โหวตผ่าน · รอทีมงานจ่าย', rejected: 'ไม่ผ่าน', paid: 'จ่ายแล้ว' };
+  const WSTATUS = { pending: 'รออนุมัติ', second_approval: 'รอผู้อนุมัติคนที่ 2', paid: 'โอนแล้ว', rejected: 'ไม่ผ่าน · คืน Gold แล้ว' };
+  const QSTATUS = { open: 'รอคนรับ', in_progress: 'กำลังทำ', submitted: 'ส่งงานแล้ว', completed: 'สำเร็จ', cancelled: 'ยกเลิก', suspended: 'ถูกระงับ' };
+  const ERR = [
+    ['not enough gold', 'Gold ไม่พอ'], ['quest not available', 'เควสต์นี้มีคนรับไปแล้วหรือปิดไปแล้ว'],
+    ['below minimum withdrawal', 'ต่ำกว่ายอดถอนขั้นต่ำ'], ['not signed in', 'กรุณาเข้าสู่ระบบใหม่'],
+    ['urgent window', 'ช่วงเวลาด่วนต้องอยู่ระหว่าง 10 นาทีถึง 24 ชม.'], ['title', 'ชื่อเควสต์ต้องยาว 4–120 ตัวอักษร'],
+    ['Invalid login credentials', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'], ['Email not confirmed', 'ยังไม่ได้ยืนยันอีเมล — เช็กกล่องจดหมาย'],
+    ['User already registered', 'อีเมลนี้สมัครแล้ว'],
+    ['already in a guild', 'คุณอยู่ในกิลด์อื่นแล้ว'], ['guild is full', 'กิลด์เต็มแล้ว'], ['transfer leadership first', 'ต้องโอนตำแหน่งหัวกิลด์ให้คนอื่นก่อน'],
+    ['claim exceeds fund', 'ยอดเคลมเกินเงินในกองทุน'], ['you already have an open claim', 'คุณมีเคลมที่ยังค้างอยู่'], ['voting closed', 'ปิดโหวตแล้ว'],
+    ['cannot vote on your own claim', 'โหวตเคลมของตัวเองไม่ได้'], ['duplicate key value violates unique constraint "guilds_name_key"', 'ชื่อกิลด์นี้มีคนใช้แล้ว'],
+    ['already in a family', 'คุณอยู่ในครอบครัวอื่นแล้ว'], ['family code not found', 'ไม่พบรหัสครอบครัวนี้'], ['parents only', 'เฉพาะผู้ปกครองเท่านั้น'],
+    ['not enough stat points', 'แต้มไม่พอ'], ['card not owned', 'ยังไม่มีการ์ดใบนี้'], ['duplicate card', 'ใส่การ์ดซ้ำในเด็คไม่ได้']
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const num = (n) => Number(n || 0).toLocaleString('en-US');
+  const errText = (e) => { const m = (e && (e.message || e.error_description)) || String(e); const hit = ERR.find(([k]) => m.includes(k)); return hit ? hit[1] : m; };
+  const ago = (iso) => { const s = (Date.now() - new Date(iso)) / 1000; if (s < 60) return 'เมื่อสักครู่'; if (s < 3600) return Math.floor(s / 60) + ' นาที'; if (s < 86400) return Math.floor(s / 3600) + ' ชม.'; return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }); };
+
+  let toastTimer;
+  function toast(msg, isErr) {
+    const t = $('toast'); t.textContent = msg; t.classList.toggle('err', !!isErr); t.classList.remove('hidden');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add('hidden'), 3200);
+  }
+
+  const S = { user: null, profile: null, wallet: null, settings: {}, board: [], posted: [], working: [], tx: [], wd: [], cat: 'all', tab: 'board', channel: null,
+    cards: [], myCards: new Set(), deck: null, doneByCat: {}, guilds: [], memberCount: {}, myGuild: null, myGuildRole: null, gMembers: [], claims: [], myVotes: {},
+    family: null, famRole: null, famMembers: [], famQuests: [] };
+
+  /* ---------- Auth ---------- */
+  let mode = 'login';
+  function setMode(m) {
+    mode = m;
+    $('tabLogin').setAttribute('aria-pressed', m === 'login'); $('tabSignup').setAttribute('aria-pressed', m === 'signup');
+    $('usernameWrap').classList.toggle('hidden', m !== 'signup');
+    $('authSubmit').textContent = m === 'login' ? 'เข้าสู่ระบบ' : 'สมัครและเริ่มผจญภัย';
+    $('authPassword').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+    $('authMsg').textContent = '';
+  }
+  $('tabLogin').onclick = () => setMode('login');
+  $('tabSignup').onclick = () => setMode('signup');
+  $('authForm').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const email = $('authEmail').value.trim(), password = $('authPassword').value;
+    $('authSubmit').disabled = true; $('authMsg').textContent = 'กำลังดำเนินการ…';
+    try {
+      if (mode === 'login') {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      } else {
+        const username = $('authUsername').value.trim();
+        if (!/^[A-Za-z0-9_]{3,20}$/.test(username)) throw new Error('ชื่อผู้ใช้ต้องเป็น a–z, 0–9 หรือ _ ยาว 3–20 ตัว');
+        const { data, error } = await sb.auth.signUp({ email, password, options: { data: { username }, emailRedirectTo: location.origin + location.pathname } });
+        if (error) throw error;
+        if (!data.session) { $('authMsg').textContent = 'สมัครแล้ว! เปิดอีเมลเพื่อยืนยัน แล้วกลับมาเข้าสู่ระบบ'; return; }
+      }
+    } catch (e) { $('authMsg').textContent = errText(e); }
+    finally { $('authSubmit').disabled = false; }
+  };
+  $('signOut').onclick = () => sb.auth.signOut();
+
+  /* ---------- Data ---------- */
+  async function loadMe() {
+    const uid = S.user.id;
+    const [p, w, st] = await Promise.all([
+      sb.from('profiles').select('*').eq('id', uid).single(),
+      sb.from('wallets').select('*').eq('user_id', uid).single(),
+      sb.from('app_settings').select('key,value')
+    ]);
+    if (p.error) throw p.error; if (w.error) throw w.error;
+    S.profile = p.data; S.wallet = w.data;
+    S.settings = Object.fromEntries((st.data || []).map((r) => [r.key, r.value]));
+  }
+  const QSEL = 'id,title,description,category,rank,reward_gold,reward_exp,status,moderation,moderation_note,urgent_until,created_at,poster_id,worker_id,family_id,poster:profiles!quests_poster_id_fkey(username,display_name),worker:profiles!quests_worker_id_fkey(username,display_name)';
+  async function loadQuests() {
+    const uid = S.user.id;
+    const [b, p, w] = await Promise.all([
+      sb.from('quests').select(QSEL).eq('status', 'open').eq('moderation', 'approved').is('family_id', null).order('created_at', { ascending: false }).limit(60),
+      sb.from('quests').select(QSEL).eq('poster_id', uid).in('status', ['open', 'in_progress', 'submitted']).order('created_at', { ascending: false }),
+      sb.from('quests').select(QSEL).eq('worker_id', uid).in('status', ['in_progress', 'submitted']).order('updated_at', { ascending: false })
+    ]);
+    if (b.error) throw b.error;
+    S.board = b.data || []; S.posted = p.data || []; S.working = w.data || [];
+  }
+  async function loadMoney() {
+    const uid = S.user.id;
+    const [t, w] = await Promise.all([
+      sb.from('transactions').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
+      sb.from('withdrawals').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)
+    ]);
+    S.tx = t.data || []; S.wd = w.data || [];
+  }
+  async function loadCards() {
+    const uid = S.user.id;
+    const [c, mine, d, done] = await Promise.all([
+      sb.from('job_cards').select('*').order('sort'),
+      sb.from('user_cards').select('card_id').eq('user_id', uid),
+      sb.from('decks').select('*').eq('user_id', uid).maybeSingle(),
+      sb.from('quests').select('category').eq('worker_id', uid).eq('status', 'completed')
+    ]);
+    S.cards = c.data || []; S.myCards = new Set((mine.data || []).map((r) => r.card_id)); S.deck = d.data;
+    S.doneByCat = {}; (done.data || []).forEach((q) => { S.doneByCat[q.category] = (S.doneByCat[q.category] || 0) + 1; });
+  }
+  async function loadGuild() {
+    const uid = S.user.id;
+    const [g, m] = await Promise.all([
+      sb.from('guilds').select('*').is('closed_at', null).order('fund_gold', { ascending: false }).limit(50),
+      sb.from('guild_members').select('user_id,guild_id,role,joined_at,p:profiles!guild_members_user_id_fkey(username,display_name,base_level)').is('left_at', null)
+    ]);
+    S.guilds = g.data || []; S.memberCount = {};
+    (m.data || []).forEach((r) => { S.memberCount[r.guild_id] = (S.memberCount[r.guild_id] || 0) + 1; });
+    const me = (m.data || []).find((r) => r.user_id === uid);
+    S.myGuild = me ? S.guilds.find((x) => x.id === me.guild_id) || null : null; S.myGuildRole = me ? me.role : null;
+    S.gMembers = S.myGuild ? (m.data || []).filter((r) => r.guild_id === S.myGuild.id) : [];
+    S.claims = []; S.myVotes = {};
+    if (S.myGuild) {
+      const [cl, v] = await Promise.all([
+        sb.from('guild_claims').select('*, claimant:profiles!guild_claims_claimant_id_fkey(username,display_name)').eq('guild_id', S.myGuild.id).order('created_at', { ascending: false }).limit(20),
+        sb.from('guild_votes').select('claim_id,approve').eq('user_id', uid)
+      ]);
+      S.claims = cl.data || []; (v.data || []).forEach((x) => { S.myVotes[x.claim_id] = x.approve; });
+    }
+  }
+  async function loadFamily() {
+    const uid = S.user.id;
+    const { data: me } = await sb.from('family_members').select('family_id, role').eq('user_id', uid).is('left_at', null).maybeSingle();
+    S.family = null; S.famRole = null; S.famMembers = []; S.famQuests = [];
+    if (!me) return;
+    const [f, mem, q] = await Promise.all([
+      sb.from('families').select('*').eq('id', me.family_id).single(),
+      sb.from('family_members').select('user_id, role, p:profiles!family_members_user_id_fkey(username,display_name)').eq('family_id', me.family_id),
+      sb.from('quests').select(QSEL).eq('family_id', me.family_id).eq('status', 'open').order('created_at', { ascending: false })
+    ]);
+    S.family = f.data; S.famRole = me.role; S.famMembers = mem.data || []; S.famQuests = q.data || [];
+  }
+  async function refresh(parts = ['me', 'quests', 'money', 'cards', 'guild', 'family']) {
+    try {
+      await Promise.all(parts.map((p) => ({ me: loadMe, quests: loadQuests, money: loadMoney, cards: loadCards, guild: loadGuild, family: loadFamily })[p]()));
+      render();
+    } catch (e) { toast(errText(e), true); }
+  }
+
+  let rtTimer;
+  function subscribe() {
+    if (S.channel) sb.removeChannel(S.channel);
+    S.channel = sb.channel('rlq-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quests' }, () => { clearTimeout(rtTimer); rtTimer = setTimeout(() => refresh(['quests', 'family']), 300); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guilds' }, () => refresh(['guild']))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'guild_claims' }, () => refresh(['guild']))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'wallets', filter: 'user_id=eq.' + S.user.id }, () => refresh(['me', 'money']))
+      .subscribe();
+  }
+
+  async function rpc(fn, args, okMsg) {
+    const { data, error } = await sb.rpc(fn, args);
+    if (error) { toast(errText(error), true); return null; }
+    if (okMsg) toast(typeof okMsg === 'function' ? okMsg(data) : okMsg);
+    await refresh();
+    return data ?? true;
+  }
+
+  /* ---------- Render ---------- */
+  function levelInfo(exp) {
+    const lv = Math.floor(Math.sqrt(exp / 100)) + 1, from = 100 * (lv - 1) ** 2, to = 100 * lv ** 2;
+    return { lv, cur: exp - from, need: to - from, pct: Math.round(((exp - from) / (to - from)) * 100) };
+  }
+  function questCard(q, ctx) {
+    const c = CATS[q.category] || CATS.general;
+    const mins = q.urgent_until ? Math.round((new Date(q.urgent_until) - Date.now()) / 60000) : null;
+    const urgent = mins !== null && mins > 0 && q.status === 'open';
+    const poster = q.poster ? (q.poster.display_name || q.poster.username) : '';
+    let action = '', state = '';
+    if (ctx === 'board' || ctx === 'family') {
+      const canTake = q.poster_id !== S.user.id && (ctx === 'board' || S.famRole === 'child');
+      action = q.poster_id === S.user.id
+        ? '<span class="small muted">เควสต์ของคุณ</span>'
+        : canTake ? `<div class="row">${ctx === 'board' ? `<button class="btn sec" data-act="report" data-id="${q.id}" aria-label="รายงานเควสต์นี้" title="รายงาน" style="padding:0 12px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"/></svg></button>` : ''}<button class="btn ${urgent ? 'urgent' : 'action'}" data-act="accept" data-id="${q.id}">รับเควสต์</button></div>`
+        : '<span class="small muted">สำหรับลูกในบ้าน</span>';
+    } else if (ctx === 'working') {
+      state = QSTATUS[q.status];
+      action = q.status === 'in_progress' ? `<button class="btn action" data-act="submit" data-id="${q.id}">ส่งงาน</button>` : '<span class="small muted">รอผู้โพสต์ยืนยัน</span>';
+    } else {
+      state = q.moderation === 'pending' ? 'รอผู้ตรวจอนุมัติ' : q.moderation === 'changes_requested' ? 'ผู้ตรวจขอให้แก้ไข' : QSTATUS[q.status];
+      if (q.status === 'submitted') action = `<button class="btn action" data-act="confirm" data-id="${q.id}">ยืนยันงานเสร็จ</button>`;
+      else if (q.status === 'open') action = `<button class="btn sec" data-act="cancel" data-id="${q.id}">ยกเลิก</button>`;
+      else action = `<span class="small muted">${q.worker ? 'ผู้รับ: ' + esc(q.worker.display_name || q.worker.username) : ''}</span>`;
+    }
+    return `<article class="card q${urgent ? ' is-urgent' : ''}">
+      <div class="row">
+        ${urgent ? `<span class="tag" style="background:var(--danger);color:#fff">ด่วน · เหลือ ${mins} นาที</span>` : ''}
+        <span class="tag" style="background:${c.bg};color:${c.fg}">${c.label}</span>
+        <span class="rank">RANK ${esc(q.rank)}</span>
+        ${state ? `<span class="small" style="margin-left:auto;font-weight:600;color:var(--ink-soft)">${esc(state)}</span>` : ''}
+      </div>
+      <h3>${esc(q.title)}</h3>
+      ${q.description ? `<p class="small" style="margin:0;color:var(--ink-soft);white-space:pre-line">${esc(q.description)}</p>` : ''}
+      ${q.moderation_note && ctx === 'posted' ? `<p class="small" style="margin:0;color:var(--danger-ink)">หมายเหตุผู้ตรวจ: ${esc(q.moderation_note)}</p>` : ''}
+      <span class="small muted">${poster ? 'โดย ' + esc(poster) + ' · ' : ''}${ago(q.created_at)}</span>
+      <div class="foot dash">
+        <div><span class="gold" style="font-size:18px">${num(q.reward_gold)} G</span> <span class="small muted">+${num(q.reward_exp)} EXP</span></div>
+        ${action}
+      </div>
+    </article>`;
+  }
+  function list(el, items, ctx, emptyText) {
+    $(el).innerHTML = items.length ? items.map((q) => questCard(q, ctx)).join('') : `<div class="empty">${emptyText}</div>`;
+  }
+  function render() {
+    const p = S.profile, w = S.wallet; if (!p || !w) return;
+    const L = levelInfo(Number(p.base_exp));
+    $('hLevel').textContent = L.lv; $('hName').textContent = p.display_name || p.username;
+    $('hSub').textContent = 'Lv.' + L.lv + ' · ' + (p.job_class || 'นักผจญภัย');
+    $('hGold').textContent = num(w.gold); $('hCrystal').textContent = num(w.crystal);
+
+    // board
+    const cats = ['all', ...Object.keys(CATS)];
+    $('catFilters').innerHTML = cats.map((k) => `<button class="pill" data-cat="${k}" aria-pressed="${S.cat === k}">${k === 'all' ? 'ทั้งหมด' : CATS[k].label}</button>`).join('');
+    const board = S.board.filter((q) => S.cat === 'all' || q.category === S.cat)
+      .sort((a, b) => (urgentOf(b) - urgentOf(a)));
+    list('boardList', board, 'board', 'ยังไม่มีเควสต์ในหมวดนี้ — ลองโพสต์เควสต์แรกดูไหม');
+    list('workingList', S.working, 'working', 'ยังไม่ได้รับเควสต์');
+    list('postedList', S.posted, 'posted', 'ยังไม่ได้โพสต์เควสต์');
+
+    // character
+    $('cLevel').textContent = L.lv; $('cName').textContent = p.display_name || p.username; $('cUser').textContent = '@' + p.username;
+    $('cExpText').textContent = num(L.cur) + ' / ' + num(L.need);
+    $('cExpFill').style.width = L.pct + '%'; $('cExpBar').setAttribute('aria-valuenow', L.pct);
+    $('cRank').textContent = p.rank; $('cDone').textContent = num(p.quests_done); $('cJob').textContent = p.job_class || 'ยังไม่มี';
+    if (document.activeElement !== $('nameInput')) $('nameInput').value = p.display_name || '';
+
+    // wallet
+    $('wGold').textContent = num(w.gold); $('wLocked').textContent = num(w.gold_locked); $('wCrystal').textContent = num(w.crystal);
+    const rate = parseFloat(S.settings.gold_thb_rate);
+    $('wBaht').textContent = rate > 0 ? '≈ ' + (w.gold * rate).toLocaleString('th-TH', { maximumFractionDigits: 2 }) + ' บาท · 1 G = ' + rate + ' บาท' : 'ยังไม่ได้ประกาศอัตรา Gold ต่อบาท';
+    $('wRule').textContent = 'ขั้นต่ำ ' + num(S.settings.withdraw_min_gold || 100) + ' G · ตั้งแต่ ' + num(S.settings.withdraw_dual_threshold || 5000) + ' G ขึ้นไปต้องผ่านผู้อนุมัติ 2 คน';
+    $('wList').innerHTML = S.wd.length ? '<h3 style="font-size:14px;margin-top:6px">คำขอถอนของฉัน</h3>' + S.wd.map((d) =>
+      `<div class="tx"><div style="flex:1;min-width:0"><div>${esc(d.bank_label)}</div><div class="small muted">${ago(d.created_at)} · ${WSTATUS[d.status]}</div></div><span class="amt" style="color:${d.status === 'rejected' ? 'var(--ink-muted)' : 'var(--gold-ink)'}">${num(d.amount_gold)} G</span></div>`).join('') : '';
+    $('txList').innerHTML = S.tx.length ? S.tx.map((t) => {
+      const g = Number(t.gold_delta), l = Number(t.locked_delta);
+      const amt = g !== 0 ? (g > 0 ? '+' : '−') + num(Math.abs(g)) : (l > 0 ? '+' : '−') + num(Math.abs(l)) + ' ล็อก';
+      const color = g > 0 ? 'var(--teal-ink)' : g < 0 ? 'var(--danger-ink)' : 'var(--ink-muted)';
+      return `<div class="tx"><div style="flex:1;min-width:0"><div>${esc(TX[t.kind] || t.kind)}</div><div class="small muted">${ago(t.created_at)}</div></div><span class="amt" style="color:${color}">${amt}</span></div>`;
+    }).join('') : '<div class="empty">ยังไม่มีรายการ</div>';
+    renderStats(); renderDeck(); renderGuild(); renderFamily();
+  }
+
+  const cardById = (id) => S.cards.find((c) => c.id === id);
+  function deckBonus() {
+    const b = {}; if (!S.deck) return b;
+    ['main_card', 'support1', 'support2', 'support3'].forEach((k) => {
+      const c = cardById(S.deck[k]); if (c) Object.entries(c.stats || {}).forEach(([s, v]) => { b[s] = (b[s] || 0) + v; });
+    });
+    return b;
+  }
+  function renderStats() {
+    const p = S.profile, b = deckBonus(), pts = p.stat_points;
+    $('statPanel').innerHTML = `<div class="row between" style="margin-bottom:8px"><h2 style="font-size:15px">ค่าสถานะ</h2>
+      <span class="small" style="font-weight:600;color:${pts ? 'var(--gold-ink)' : 'var(--ink-muted)'}">แต้มเหลือ ${pts}</span></div>
+      <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${STATS.map(([k, L]) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;background:var(--parchment-200);border-radius:8px;padding:6px 8px">
+          <span style="font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--ink-muted)">${L}</span>
+          <span style="font-family:var(--font-rpg);font-weight:700;font-size:16px">${p[k] + (b[k] || 0)}${b[k] ? `<span class="small" style="color:var(--teal-ink)"> (+${b[k]})</span>` : ''}</span>
+          ${pts ? `<button class="btn sec" data-stat="${k}" aria-label="เพิ่ม ${L}" style="min-height:32px;padding:0 8px">+</button>` : ''}
+        </div>`).join('')}</div>`;
+  }
+  function cardTile(c, opts = {}) {
+    const owned = S.myCards.has(c.id), done = S.doneByCat[c.category] || 0;
+    return `<article class="card" style="display:flex;flex-direction:column;gap:6px;${owned ? '' : 'opacity:.75;border-style:dashed'}">
+      <div class="row between"><span class="tag" style="background:${RARITY[c.rarity]};color:#fff">${c.rarity}</span>
+        ${opts.slot ? `<span class="small muted">${opts.slot}</span>` : ''}</div>
+      <h3 style="font-size:16px">${esc(c.name)}</h3>
+      <span class="small" style="color:var(--teal-ink)">EXP +${c.exp_bonus_pct}% ${c.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + esc((CATS[c.category] || {}).label || c.category)}${Object.keys(c.stats || {}).length ? ' · ' + Object.entries(c.stats).map(([s, v]) => s.toUpperCase() + ' +' + v).join(' ') : ''}</span>
+      <span class="small muted">${owned ? 'มีแล้ว' : 'ปลดล็อก: ' + esc(c.description) + ` (${Math.min(done, c.unlock_count)}/${c.unlock_count})`}</span>
+    </article>`;
+  }
+  function renderDeck() {
+    const d = S.deck || {}, owned = S.cards.filter((c) => S.myCards.has(c.id));
+    const sel = (name, cur, allowEmpty) => `<select name="${name}" style="border:1.5px solid var(--brass-600);border-radius:10px;padding:8px;min-height:44px;background:#fffdf6">
+      ${allowEmpty ? '<option value="">— ว่าง —</option>' : ''}${owned.map((c) => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)} (${c.rarity})</option>`).join('')}</select>`;
+    const main = cardById(d.main_card);
+    $('deckPanel').innerHTML = `<div class="grid" style="align-items:start">
+      ${main ? `<div style="background:#2f4a3e;border:3px solid var(--gold-500);border-radius:14px;padding:16px;color:var(--on-wood);display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 0 var(--brass-600)">
+        <span style="font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--gold-500)">MAIN JOB · ${main.rarity}</span>
+        <h2 style="font-size:24px">${esc(main.name)}</h2>
+        <span class="small" style="color:#d9ede4">EXP +${main.exp_bonus_pct}% ${main.category === 'general' ? 'ทุกเควสต์' : 'เมื่อทำเควสต์' + esc((CATS[main.category] || {}).label || '')}</span></div>` : '<div class="empty">ยังไม่ได้เลือกการ์ดหลัก</div>'}
+      <form id="deckForm" class="card" style="display:flex;flex-direction:column;gap:10px">
+        <label class="f">การ์ดหลัก (ได้โบนัส EXP)${sel('main', d.main_card, false)}</label>
+        <label class="f">การ์ดเสริม 1${sel('s1', d.support1, true)}</label>
+        <label class="f">การ์ดเสริม 2${sel('s2', d.support2, true)}</label>
+        <label class="f">การ์ดเสริม 3${sel('s3', d.support3, true)}</label>
+        <button class="btn primary" type="submit">บันทึกเด็ค</button>
+        <span class="small muted">การ์ดเสริมให้ค่าสถานะเพิ่ม · การ์ดใช้ในเกม MMORPG ภาคหลักได้ในอนาคต</span>
+      </form></div>`;
+    $('cardList').innerHTML = S.cards.map((c) => cardTile(c)).join('');
+  }
+  function health(g) {
+    const n = S.memberCount[g.id] || 1, pct = Math.min(100, Math.round((Number(g.fund_gold) / (n * 500)) * 100));
+    return pct >= 50 ? { pct, label: 'มั่นคง', color: 'var(--teal-600)', bg: 'var(--teal-tint)', fg: 'var(--teal-ink)' }
+      : pct >= 20 ? { pct, label: 'ระวัง', color: 'var(--exp)', bg: '#f6e8cf', fg: '#7a4a06' }
+      : { pct, label: 'เสี่ยง', color: 'var(--danger)', bg: 'var(--danger-tint)', fg: 'var(--danger-ink)' };
+  }
+  function renderGuild() {
+    const el = $('guildPanel');
+    if (!S.myGuild) {
+      el.innerHTML = `<div class="grid" style="align-items:start">
+        <form id="guildCreate" class="card" style="display:flex;flex-direction:column;gap:10px">
+          <h2 style="font-size:16px">ตั้งกิลด์ใหม่</h2>
+          <label class="f">ชื่อกิลด์<input name="n" required minlength="3" maxlength="40"></label>
+          <label class="f">คำขวัญ (ไม่บังคับ)<input name="m" maxlength="120"></label>
+          <button class="btn primary" type="submit">ตั้งกิลด์</button></form>
+        <div class="card" style="display:flex;flex-direction:column;gap:4px"><h2 style="font-size:16px">กิลด์ที่เปิดรับ</h2>
+          ${S.guilds.length ? S.guilds.map((g) => { const n = S.memberCount[g.id] || 0, h = health(g); return `<div class="tx"><div style="flex:1;min-width:0"><b>${esc(g.name)}</b><div class="small muted">${n}/${g.member_cap} คน · กองทุน ${num(g.fund_gold)} G · ${h.label}</div></div>
+            ${n < g.member_cap ? `<button class="btn action" data-gjoin="${g.id}">เข้าร่วม</button>` : '<span class="small muted">เต็ม</span>'}</div>`; }).join('') : '<div class="empty">ยังไม่มีกิลด์ — ตั้งกิลด์แรกเลย</div>'}
+        </div></div>`;
+      return;
+    }
+    const g = S.myGuild, h = health(g), n = S.gMembers.length, leader = S.myGuildRole === 'leader';
+    el.innerHTML = `
+      <div style="background:var(--wood-800);border:2px solid var(--brass-500);border-radius:14px;padding:16px;color:var(--on-wood);display:flex;gap:14px;align-items:center;margin-bottom:12px">
+        <div aria-hidden="true" style="width:60px;height:72px;flex:none;background:#7a2e22;border:2px solid var(--gold-500);clip-path:polygon(0 0,100% 0,100% 78%,50% 100%,0 78%)"></div>
+        <div style="min-width:0"><h2 style="font-size:22px">${esc(g.name)}</h2><div class="small" style="color:var(--on-wood-muted)">${esc(g.motto || '')}</div>
+          <div class="small" style="color:var(--on-wood-muted)">สมาชิก ${n}/${g.member_cap} · คุณเป็น${{ leader: 'หัวกิลด์', officer: 'เจ้าหน้าที่', member: 'สมาชิก' }[S.myGuildRole]}</div></div></div>
+      <div class="grid" style="align-items:start">
+        <div class="card" style="border:2px solid ${h.color};display:flex;flex-direction:column;gap:8px">
+          <div class="row between"><h2 style="font-size:16px">กองทุนประกันกิลด์</h2><span class="tag" style="background:${h.bg};color:${h.fg}">${h.label}</span></div>
+          <span class="gold" style="font-size:30px">${num(g.fund_gold)} G</span>
+          <div class="bar" role="progressbar" aria-label="สุขภาพกองทุน" aria-valuenow="${h.pct}" aria-valuemax="100"><div style="width:${h.pct}%;background:${h.color}"></div></div>
+          <span class="small muted">เป้าหมาย 500 G ต่อสมาชิก · เสี่ยง &lt; 20% · ระวัง 20–50% · มั่นคง ≥ 50%</span>
+          <form id="gContribute" class="row dash" style="align-items:flex-end"><label class="f" style="flex:1 1 120px">สมทบ (G)<input name="a" type="number" min="1" step="1" required inputmode="numeric"></label><button class="btn action" type="submit">สมทบ</button></form>
+          <form id="gClaim" class="dash" style="display:flex;flex-direction:column;gap:8px"><h3 style="font-size:14px">ขอเคลมจากกองทุน</h3>
+            <label class="f">จำนวน (G)<input name="a" type="number" min="1" step="1" required inputmode="numeric"></label>
+            <label class="f">เหตุผล (เช่น เครื่องมือเสียหายระหว่างเควสต์)<input name="r" required minlength="5" maxlength="500"></label>
+            <button class="btn sec" type="submit">ส่งให้สมาชิกโหวต</button></form>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:4px"><h2 style="font-size:16px">เคลมของกิลด์</h2>
+          ${S.claims.length ? S.claims.map((c) => {
+            const mine = c.claimant_id === S.user.id, voted = c.id in S.myVotes, open = c.status === 'voting' && new Date(c.closes_at) > Date.now();
+            return `<div class="tx" style="flex-wrap:wrap"><div style="flex:1 1 200px;min-width:0"><b>${num(c.amount)} G</b> · ${esc(c.claimant ? (c.claimant.display_name || c.claimant.username) : '')}
+              <div class="small" style="color:var(--ink-soft)">${esc(c.reason)}</div>
+              <div class="small muted">${CLAIM[c.status]}${c.status === 'voting' ? ` · เห็นด้วย ${c.yes_votes} / ไม่เห็นด้วย ${c.no_votes}${voted ? ' · คุณโหวต' + (S.myVotes[c.id] ? 'เห็นด้วย' : 'ไม่เห็นด้วย') : ''}` : ''}</div></div>
+              ${open && !mine ? `<div class="row"><button class="btn action" data-vote="${c.id}" data-yes="1">เห็นด้วย</button><button class="btn sec" data-vote="${c.id}" data-yes="0">ไม่เห็นด้วย</button></div>` : ''}</div>`;
+          }).join('') : '<div class="empty">ยังไม่มีเคลม</div>'}
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:4px"><h2 style="font-size:16px">สมาชิก</h2>
+          ${S.gMembers.map((m) => `<div class="tx"><div style="flex:1;min-width:0">${esc(m.p ? (m.p.display_name || m.p.username) : '')} <span class="small muted">Lv.${m.p ? m.p.base_level : 1}${m.role === 'leader' ? ' · หัวกิลด์' : ''}</span></div>
+            ${leader && m.user_id !== S.user.id ? `<button class="btn sec" data-glead="${m.user_id}" style="min-height:36px">ให้เป็นหัวกิลด์</button>` : ''}</div>`).join('')}
+          <button class="btn sec" id="gLeave" type="button" style="margin-top:8px">${n === 1 ? 'ออกและปิดกิลด์ (คืนเงินกองทุนให้คุณ)' : 'ออกจากกิลด์'}</button>
+        </div>
+      </div>`;
+  }
+  function renderFamily() {
+    const el = $('familyPanel');
+    if (!S.family) {
+      el.innerHTML = `<div class="grid" style="align-items:start">
+        <form id="famCreate" class="card" style="display:flex;flex-direction:column;gap:10px"><h3 style="font-size:15px">สร้างบ้านของฉัน (ผู้ปกครอง)</h3>
+          <label class="f">ชื่อบ้าน<input name="n" required minlength="2" maxlength="40" placeholder="เช่น บ้านริมน้ำ"></label><button class="btn primary" type="submit">สร้าง</button>
+          <span class="small muted">ผู้ปกครองมอบเควสต์ให้ลูกได้ โดยใช้ Gold ของตัวเองเป็นรางวัล</span></form>
+        <form id="famJoin" class="card" style="display:flex;flex-direction:column;gap:10px"><h3 style="font-size:15px">เข้าบ้านด้วยรหัส</h3>
+          <label class="f">รหัสบ้าน<input name="c" required maxlength="12" style="text-transform:uppercase"></label>
+          <label class="f">ฉันเป็น<select name="r"><option value="child">ลูก</option><option value="parent">ผู้ปกครอง</option></select></label>
+          <button class="btn action" type="submit">เข้าบ้าน</button></form></div>`;
+      return;
+    }
+    const parent = S.famRole === 'parent';
+    el.innerHTML = `<div class="grid" style="align-items:start">
+      <div class="card" style="display:flex;flex-direction:column;gap:6px"><h3 style="font-size:17px">${esc(S.family.name)}</h3>
+        ${parent ? `<span class="small">รหัสเชิญ <b style="font-family:var(--font-rpg);letter-spacing:.08em">${esc(S.family.join_code)}</b> — ให้ลูกกรอกในแอปของเขา</span>` : ''}
+        ${S.famMembers.map((m) => `<div class="tx"><span style="flex:1">${esc(m.p ? (m.p.display_name || m.p.username) : '')}</span><span class="small muted">${m.role === 'parent' ? 'ผู้ปกครอง' : 'ลูก'}</span></div>`).join('')}
+        <button class="btn sec" id="famLeave" type="button">ออกจากบ้าน</button></div>
+      ${parent ? `<form id="famPost" class="card" style="display:flex;flex-direction:column;gap:10px"><h3 style="font-size:15px">มอบเควสต์ให้ลูก</h3>
+        <label class="f">งาน<input name="t" required minlength="4" maxlength="120" placeholder="เช่น จัดโต๊ะหนังสือให้เรียบร้อย"></label>
+        <label class="f">รายละเอียด<input name="d" maxlength="2000"></label>
+        <label class="f">รางวัล (G) — ล็อกจากกระเป๋าคุณ<input name="g" type="number" min="1" step="1" required inputmode="numeric"></label>
+        <button class="btn primary" type="submit">มอบเควสต์</button></form>` : ''}
+    </div>
+    <h3 style="font-size:15px;margin:14px 0 8px">เควสต์ในบ้านที่ยังว่าง</h3>
+    <div class="grid">${S.famQuests.length ? S.famQuests.map((q) => questCard(q, 'family')).join('') : '<div class="empty">ยังไม่มีเควสต์ในบ้าน</div>'}</div>`;
+  }
+  function urgentOf(q) { return q.urgent_until && new Date(q.urgent_until) > Date.now() ? 1 : 0; }
+
+  /* ---------- Events ---------- */
+  document.querySelector('nav.tabs').onclick = (ev) => {
+    const b = ev.target.closest('button[data-tab]'); if (!b) return;
+    S.tab = b.dataset.tab;
+    document.querySelectorAll('nav.tabs button').forEach((x) => x.setAttribute('aria-current', x === b ? 'page' : 'false'));
+    ['board', 'char', 'deck', 'guild', 'wallet'].forEach((t) => $('view-' + t).classList.toggle('hidden', t !== S.tab));
+    window.scrollTo({ top: 0 });
+  };
+  $('catFilters').onclick = (ev) => { const b = ev.target.closest('[data-cat]'); if (b) { S.cat = b.dataset.cat; render(); } };
+  $('view-board').addEventListener('click', onQuestAction);
+  $('familyPanel').addEventListener('click', onQuestAction);
+  async function onQuestAction(ev) {
+    const b = ev.target.closest('button[data-act]'); if (!b) return;
+    const id = b.dataset.id; b.disabled = true;
+    const act = b.dataset.act;
+    if (act === 'accept') await rpc('accept_quest', { p_quest: id }, 'รับเควสต์แล้ว — ไปที่ "เควสต์ที่ฉันรับ"');
+    if (act === 'submit') await rpc('submit_quest', { p_quest: id }, 'ส่งงานแล้ว รอผู้โพสต์ยืนยัน');
+    if (act === 'confirm' && confirm('ยืนยันว่างานเสร็จ? Gold ที่ล็อกไว้จะโอนให้ผู้รับงานทันที')) await rpc('confirm_quest', { p_quest: id }, 'โอนรางวัลแล้ว');
+    if (act === 'cancel' && confirm('ยกเลิกเควสต์นี้? Gold ที่ล็อกไว้จะคืนเข้ากระเป๋า')) await rpc('cancel_quest', { p_quest: id }, 'ยกเลิกแล้ว คืน Gold ให้แล้ว');
+    if (act === 'report') {
+      const reason = prompt('รายงานเควสต์นี้เพราะอะไร? (เช่น เสี่ยงหลอกลวง, ผิดกฎหมาย, ข้อมูลไม่ครบ)');
+      if (reason && reason.trim().length >= 3) await rpc('report_quest', { p_quest: id, p_reason: reason.trim() }, 'ส่งรายงานแล้ว ทีมงานจะตรวจสอบ');
+    }
+    b.disabled = false;
+  }
+
+  // stats + deck
+  $('statPanel').onclick = async (ev) => {
+    const b = ev.target.closest('button[data-stat]'); if (!b) return;
+    b.disabled = true; await rpc('allocate_stat', { p_stat: b.dataset.stat, p_points: 1 }, b.dataset.stat.toUpperCase() + ' +1');
+  };
+  $('deckPanel').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const f = ev.target, v = (n) => f[n].value || null;
+    await rpc('set_deck', { p_main: v('main'), p_s1: v('s1'), p_s2: v('s2'), p_s3: v('s3') }, 'บันทึกเด็คแล้ว');
+  });
+
+  // guild
+  $('guildPanel').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const f = ev.target;
+    if (f.id === 'guildCreate') await rpc('create_guild', { p_name: f.n.value.trim(), p_motto: f.m.value.trim() || null }, 'ตั้งกิลด์แล้ว');
+    if (f.id === 'gContribute') await rpc('contribute_guild', { p_amount: Number(f.a.value) }, 'สมทบกองทุนแล้ว');
+    if (f.id === 'gClaim') await rpc('file_guild_claim', { p_amount: Number(f.a.value), p_reason: f.r.value.trim() }, 'ส่งเคลมให้สมาชิกโหวตแล้ว');
+  });
+  $('guildPanel').addEventListener('click', async (ev) => {
+    const b = ev.target.closest('button'); if (!b || b.type === 'submit') return;
+    if (b.dataset.gjoin) { b.disabled = true; await rpc('join_guild', { p_guild: b.dataset.gjoin }, 'เข้ากิลด์แล้ว'); }
+    if (b.dataset.vote) { b.disabled = true; await rpc('vote_guild_claim', { p_claim: b.dataset.vote, p_approve: b.dataset.yes === '1' },
+      (s) => s === 'approved' ? 'โหวตผ่านแล้ว รอทีมงานจ่าย' : s === 'rejected' ? 'เคลมไม่ผ่าน' : 'บันทึกโหวตแล้ว'); }
+    if (b.dataset.glead && confirm('โอนตำแหน่งหัวกิลด์ให้สมาชิกคนนี้?')) await rpc('transfer_leader', { p_user: b.dataset.glead }, 'โอนตำแหน่งแล้ว');
+    if (b.id === 'gLeave' && confirm(S.gMembers.length === 1 ? 'คุณเป็นคนสุดท้าย กิลด์จะปิดและเงินกองทุนคืนให้คุณ ตกลงไหม?' : 'ออกจากกิลด์นี้?')) await rpc('leave_guild', {}, 'ออกจากกิลด์แล้ว');
+  });
+
+  // family
+  $('familyPanel').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const f = ev.target;
+    if (f.id === 'famCreate') await rpc('create_family', { p_name: f.n.value.trim() }, 'สร้างบ้านแล้ว — ส่งรหัสเชิญให้ลูกได้เลย');
+    if (f.id === 'famJoin') await rpc('join_family', { p_code: f.c.value.trim(), p_role: f.r.value }, 'เข้าบ้านแล้ว');
+    if (f.id === 'famPost') await rpc('post_family_quest', { p_title: f.t.value.trim(), p_description: f.d.value.trim() || null, p_reward_gold: Number(f.g.value), p_urgent_minutes: null }, 'มอบเควสต์แล้ว');
+  });
+  $('familyPanel').addEventListener('click', async (ev) => {
+    if (ev.target.id === 'famLeave' && confirm('ออกจากบ้านนี้?')) await rpc('leave_family', {}, 'ออกจากบ้านแล้ว');
+  });
+
+  // post quest
+  $('pCat').innerHTML = Object.entries(CATS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  $('openPost').onclick = () => { $('postForm').reset(); updatePostNote(); $('postDlg').showModal(); $('pTitle').focus(); };
+  $('postCancel').onclick = () => $('postDlg').close();
+  $('pReward').oninput = updatePostNote;
+  function updatePostNote() {
+    const r = Number($('pReward').value || 0), th = Number(S.settings.review_reward_threshold || 5000), g = S.wallet ? Number(S.wallet.gold) : 0;
+    $('pNote').textContent = r > g ? 'Gold ไม่พอ — มีอยู่ ' + num(g) + ' G'
+      : r >= th ? 'รางวัลตั้งแต่ ' + num(th) + ' G ต้องรอผู้ตรวจอนุมัติก่อนขึ้นกระดาน'
+      : r > 0 ? 'ผู้รับงานจะได้ +' + num(Math.min(1000, Math.max(10, Math.floor(r / 3)))) + ' EXP' : '';
+  }
+  $('postForm').onsubmit = async (ev) => {
+    ev.preventDefault();
+    $('postSubmit').disabled = true;
+    const ok = await rpc('post_quest', {
+      p_title: $('pTitle').value.trim(), p_description: $('pDesc').value.trim() || null,
+      p_category: $('pCat').value, p_rank: $('pRank').value, p_reward_gold: Number($('pReward').value),
+      p_urgent_minutes: $('pUrgent').checked ? Number($('pUrgentMin').value) : null
+    }, 'โพสต์เควสต์แล้ว');
+    $('postSubmit').disabled = false;
+    if (ok) $('postDlg').close();
+  };
+
+  // profile name
+  $('nameForm').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const { error } = await sb.from('profiles').update({ display_name: $('nameInput').value.trim() || null }).eq('id', S.user.id);
+    if (error) return toast(errText(error), true);
+    toast('บันทึกชื่อแล้ว'); refresh(['me']);
+  };
+
+  // withdraw
+  $('wForm').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const bank = $('wBank').value.trim();
+    if (/\d{6,}/.test(bank.replace(/[\s-]/g, ''))) return toast('ใส่แค่เลข 4 หลักท้ายของบัญชี เพื่อความปลอดภัย', true);
+    const ok = await rpc('request_withdrawal', { p_amount: Number($('wAmount').value), p_bank_label: bank }, 'ส่งคำขอถอนแล้ว');
+    if (ok) $('wForm').reset();
+  };
+
+  /* ---------- Boot ---------- */
+  function showSignedIn(on) {
+    $('authView').classList.toggle('hidden', on); $('appView').classList.toggle('hidden', !on);
+  }
+  sb.auth.onAuthStateChange((_evt, session) => {
+    const u = session ? session.user : null;
+    if (u && (!S.user || S.user.id !== u.id)) {
+      S.user = u; showSignedIn(true);
+      setTimeout(() => { refresh(); subscribe(); }, 0);
+    } else if (!u) {
+      S.user = null; S.profile = null; S.wallet = null;
+      if (S.channel) { sb.removeChannel(S.channel); S.channel = null; }
+      showSignedIn(false); setMode('login');
+    }
+  });
+  setInterval(() => { if (S.user && S.tab === 'board') render(); }, 60000); // keep urgent countdowns fresh
+})();
+</script>
+</body>
+</html>
