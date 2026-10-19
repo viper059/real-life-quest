@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Real-life Quest</title>
+<meta name="description" content="รับเควสต์จริง ได้ Gold จริง เลเวลอัปจริง">
+<meta name="theme-color" content="#3a2618">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RLQ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Mitr:wght@400;500;600&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
@@ -110,6 +119,12 @@ dialog::backdrop{background:rgba(42,27,17,.55)}
 <!-- Signed out -->
 <section id="authView" class="hidden">
   <div class="auth">
+    <div class="card hidden" id="installCard" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;background:var(--wood-800);border-color:var(--gold-500);color:var(--on-wood)">
+      <img src="icons/icon-192.png" alt="" width="48" height="48" style="border-radius:12px;flex:none">
+      <div style="flex:1;min-width:0"><b style="font-family:var(--font-display);font-weight:500">ติดตั้ง Real-life Quest</b>
+        <div class="small" id="installHint" style="color:var(--on-wood-muted)">เปิดได้จากหน้าจอโฮมเหมือนแอปทั่วไป</div></div>
+      <button class="btn primary" id="installBtn" type="button">ติดตั้ง</button>
+    </div>
     <div class="card" style="display:flex;flex-direction:column;gap:14px">
       <div><div class="brand">REAL-LIFE QUEST</div><p class="muted" style="margin:4px 0 0">รับเควสต์จริง ได้ Gold จริง เลเวลอัปจริง</p></div>
       <div class="row" role="tablist" aria-label="เข้าสู่ระบบหรือสมัคร">
@@ -137,6 +152,7 @@ dialog::backdrop{background:rgba(42,27,17,.55)}
       <div class="who"><b id="hName">…</b><span id="hSub">นักผจญภัย</span></div>
       <span class="chip g" title="Gold ที่ใช้ได้"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/></svg><span id="hGold">0</span></span>
       <span class="chip c" title="Crystal"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 3l7 6-7 12-7-12z"/><path d="M5 9h14"/></svg><span id="hCrystal">0</span></span>
+      <button class="icon-btn hidden" id="installTop" type="button">ติดตั้งแอป</button>
       <button class="icon-btn" id="signOut" type="button">ออก</button>
     </div>
   </header>
@@ -780,6 +796,39 @@ dialog::backdrop{background:rgba(42,27,17,.55)}
     if (ok) $('wForm').reset();
   };
 
+  /* ---------- Install as app (PWA) ---------- */
+  const ua = navigator.userAgent;
+  const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const inAppBrowser = /Line\/|FBAN|FBAV|Instagram|TikTok/i.test(ua);
+  let deferredPrompt = null;
+  function showInstall(hint, canPrompt) {
+    if (standalone) return;
+    $('installCard').classList.remove('hidden');
+    $('installHint').textContent = hint;
+    $('installBtn').classList.toggle('hidden', !canPrompt);
+    $('installTop').classList.toggle('hidden', !canPrompt);
+  }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); deferredPrompt = e;
+    showInstall('กดติดตั้ง แล้วเปิดได้จากหน้าจอโฮมเหมือนแอปทั่วไป', true);
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null; $('installCard').classList.add('hidden'); $('installTop').classList.add('hidden');
+    toast('ติดตั้งแล้ว — เปิดได้จากไอคอน RLQ บนหน้าจอโฮม');
+  });
+  async function doInstall() {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+  }
+  $('installBtn').onclick = doInstall;
+  $('installTop').onclick = doInstall;
+  if (inAppBrowser) showInstall('เปิดลิงก์นี้ใน Safari หรือ Chrome ก่อน แล้วจะติดตั้งได้ (กดเมนู ⋯ › เปิดในเบราว์เซอร์)', false);
+  else if (isIOS) showInstall('กดปุ่มแชร์ (สี่เหลี่ยมมีลูกศรขึ้น) แล้วเลือก "เพิ่มไปยังหน้าจอโฮม"', false);
+
   /* ---------- Boot ---------- */
   function showSignedIn(on) {
     $('authView').classList.toggle('hidden', on); $('appView').classList.toggle('hidden', !on);
@@ -789,6 +838,8 @@ dialog::backdrop{background:rgba(42,27,17,.55)}
     if (u && (!S.user || S.user.id !== u.id)) {
       S.user = u; showSignedIn(true);
       setTimeout(() => { refresh(); subscribe(); }, 0);
+      const startTab = location.hash.slice(1);
+      if (['board', 'char', 'deck', 'guild', 'wallet'].includes(startTab)) document.querySelector(`nav.tabs button[data-tab="${startTab}"]`).click();
     } else if (!u) {
       S.user = null; S.profile = null; S.wallet = null;
       if (S.channel) { sb.removeChannel(S.channel); S.channel = null; }

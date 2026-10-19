@@ -20,3 +20,11 @@
    select id, 'owner' from profiles where username = '<ชื่อผู้ใช้>';
    ```
 3. เข้า `admin.html` ตั้งอัตรา Gold ต่อบาท โบนัสสมัคร และเพิ่มทีมงาน
+
+## ติดตั้งเป็นแอป (PWA)
+
+ส่งลิงก์นี้ให้ผู้ใช้ — เปิดแล้วจะมีปุ่ม "ติดตั้ง" (Android/Chrome) หรือคำแนะนำ "เพิ่มไปยังหน้าจอโฮม" (iPhone):
+
+https://viper059.github.io/real-life-quest/?openExternalBrowser=1
+
+`?openExternalBrowser=1` ทำให้ลิงก์ที่ส่งใน LINE เปิดในเบราว์เซอร์จริง ซึ่งจำเป็นต่อการติดตั้ง
