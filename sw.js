@@ -1,9 +1,9 @@
 // Real-life Quest service worker: makes the app installable and opens instantly.
 // Pages are network-first (always fresh when online, cached copy when offline).
 // Supabase, fonts and CDN requests are never touched, so money and quest data are always live.
-const CACHE = 'rlq-v3';
+const CACHE = 'rlq-v4';
 const SHELL = ['./', './index.html', './admin.html', './terms.html', './privacy.html', './manifest.webmanifest', './app.css',
-  './js/core.js', './js/quests.js', './js/me.js', './js/social.js', './js/wallet.js', './js/planner.js',
+  './js/core.js', './js/quests.js', './js/avatar.js', './js/me.js', './js/social.js', './js/wallet.js', './js/planner.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon.png'];
 
 self.addEventListener('install', (e) => {

@@ -109,6 +109,11 @@
     const equipped = {}; Object.entries(S.myItems || {}).forEach(([id, it]) => { const s = (S.shop || []).find((x) => x.id === id); if (s && it.equipped) equipped[s.kind === 'frame' ? 'frame' : s.slot] = s; });
     const kyc = { none: ['ยังไม่ยืนยันตัวตน', 'var(--danger-ink)'], pending: ['รอตรวจเอกสาร', 'var(--gold-ink)'], verified: ['ยืนยันตัวตนแล้ว', 'var(--teal-ink)'], rejected: ['ยืนยันไม่ผ่าน', 'var(--danger-ink)'] }[p.kyc_status];
     $('view-char').innerHTML = `
+      <div class="section"><div class="dress">
+        <div class="card wood dress-stage"><div class="row between"><h2 style="font-size:17px">${esc(p.display_name || p.username)}</h2><span class="small" style="color:var(--on-wood-muted)">${p.title ? esc(p.title) : 'Lv.' + L.lv}</span></div>
+          <div id="avatarSlot"></div></div>
+        ${wardrobe(equipped)}
+      </div></div>
       <div class="section"><div class="grid" style="align-items:start">
         <div class="card wood stack" style="${p.frame ? `border:3px solid ${esc(p.frame)}` : ''}">
           <div class="row"><div class="lv" style="width:56px;height:56px;font-size:22px">${L.lv}</div>
@@ -133,14 +138,60 @@
               <span style="font-family:var(--font-rpg);font-weight:700;font-size:16px">${p[k] + (b[k] || 0)}</span>
               ${pts ? `<button class="btn sec" data-stat="${k}" aria-label="เพิ่ม ${Lb}" style="min-height:32px;padding:0 8px">+</button>` : ''}</div>`).join('')}</div>
           <span class="small muted">ได้ 3 แต้มทุกเลเวลอัป · การ์ดในเด็คเพิ่มค่าสถานะ</span></div>
-        <div class="card stack"><h2 style="font-size:16px">อุปกรณ์</h2>
-          <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${SLOTS.map(([k, lab]) => `<div class="${equipped[k] && tier(equipped[k].tier).glow ? 'tier-glow tier-' + equipped[k].tier : ''}" style="border:${equipped[k] ? '2px solid ' + tier(equipped[k].tier).color : '1.5px dashed var(--brass-600)'};border-radius:10px;padding:8px;min-height:64px;display:flex;flex-direction:column;justify-content:center;text-align:center;background:var(--parchment-200)">
-            <span class="small muted">${lab}</span><b class="small">${equipped[k] ? esc(equipped[k].name) : '—'}</b>${equipped[k] ? `<span class="small" style="color:${tier(equipped[k].tier).color};font-weight:600">${esc(tier(equipped[k].tier).label)}</span>` : ''}</div>`).join('')}</div>
-          <a class="btn sec sm" href="#wallet" style="align-self:flex-start">ร้านค้า Crystal</a></div>
       </div></div>
       ${renderCareers()}
       <div class="section"><form class="card row" id="nameForm" style="align-items:flex-end"><label class="f" style="flex:1 1 200px">ชื่อที่แสดง<input id="nameInput" maxlength="40" value="${esc(p.display_name || '')}"></label><button class="btn sec" type="submit">บันทึกชื่อ</button></form></div>`;
+    mountAvatar();
   }
+
+  /* ---------- dressing room (3D avatar + wardrobe) ---------- */
+  const WSLOTS = [['all', 'ทั้งหมด'], ['head', 'หมวก'], ['body', 'เสื้อ'], ['feet', 'รองเท้า'], ['tool', 'เครื่องมือ'], ['acc', 'เครื่องประดับ'], ['frame', 'กรอบ'], ['title', 'ฉายา']];
+  const COLORS = { skin: ['ผิว', ['#f6d7b0', '#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#5c3a1e']], hair: ['ผม', ['#2a1b11', '#5a3d27', '#a0522d', '#d9b56b', '#b3261e', '#6a3fb5']],
+    shirt: ['เสื้อ', ['#1f6f6b', '#b3261e', '#e8b13a', '#2e7d4f', '#6a3fb5', '#f3e6c8']], pants: ['กางเกง', ['#3a2618', '#24486a', '#2a1e14', '#6b5540', '#1f5a45', '#8a6a3a']],
+    shoes: ['รองเท้า', ['#2a1b11', '#fbf3df', '#b3261e', '#24486a', '#6b5540', '#e8b13a']] };
+  const slotOf = (i) => i.kind === 'frame' ? 'frame' : i.kind === 'title' ? 'title' : i.slot;
+  function owned() { return (S.shop || []).filter((i) => S.myItems && S.myItems[i.id] && i.kind !== 'boost'); }
+  function wardrobe(equipped) {
+    const ws = S.wslot || 'all', list = owned().filter((i) => ws === 'all' || slotOf(i) === ws);
+    const av = S.avatarDraft || S.profile.avatar || {};
+    return `<div class="card stack dress-side">
+      <div class="row between"><h2 style="font-size:16px">ตู้เสื้อผ้า</h2><a class="btn sec sm" href="#wallet">ร้านค้า</a></div>
+      <div class="row scroll-x">${WSLOTS.map(([k, v]) => `<button class="pill" data-wslot="${k}" aria-pressed="${ws === k}">${v}</button>`).join('')}</div>
+      <div class="ward-grid">${list.length ? list.map((i) => { const on = S.myItems[i.id].equipped, t = tier(i.tier);
+        return `<button class="ward-item${on ? ' on' : ''}" data-wear="${i.id}" data-on="${on ? 0 : 1}" style="border-color:${on ? 'var(--teal-600)' : t.color}" aria-pressed="${on}">
+          <span class="small" style="color:${t.color};font-weight:600">${esc(t.label)}</span><b class="small">${esc(i.name)}</b><span class="small muted">${on ? '✓ ใส่อยู่ · แตะเพื่อถอด' : 'แตะเพื่อใส่'}</span></button>`; }).join('')
+        : `<div class="empty" style="grid-column:1/-1">ยังไม่มีของในช่องนี้ — ซื้อได้ที่ร้านค้า Crystal</div>`}</div>
+      <details class="dash"${S.avatarDraft ? ' open' : ''}><summary class="small" style="cursor:pointer;font-weight:600">สีตัวละคร (ฟรี)</summary>
+        <div class="stack" style="margin-top:8px">${Object.entries(COLORS).map(([k, [lab, sw]]) => `<div class="row"><span class="small" style="width:56px">${lab}</span>
+          ${sw.map((c) => `<button class="swatch${av[k] === c ? ' on' : ''}" data-color="${k}" data-v="${c}" style="background:${c}" aria-label="${lab} ${c}" aria-pressed="${av[k] === c}"></button>`).join('')}
+          <input type="color" data-color-input="${k}" value="${esc(av[k] || '#000000')}" aria-label="เลือก${lab}เอง" class="swatch-custom"></div>`).join('')}
+          ${S.avatarDraft ? '<div class="row"><button class="btn primary sm" data-avsave="1">บันทึกสี</button><button class="btn sec sm" data-avcancel="1">ยกเลิก</button></div>' : ''}
+        </div></details>
+    </div>`;
+  }
+  function avatarSpec() {
+    const items = owned().filter((i) => S.myItems[i.id].equipped && i.kind === 'costume').map((i) => Object.assign({}, i, { tierColor: tier(i.tier).color }));
+    return { avatar: S.avatarDraft || S.profile.avatar, items, frame: S.profile.frame };
+  }
+  function mountAvatar() { const slot = $('avatarSlot'); if (slot && App.avatar) App.avatar.show(slot, avatarSpec()); }
+  $('view-char').addEventListener('click', async (ev) => {
+    const ws = ev.target.closest('[data-wslot]'); if (ws) { S.wslot = ws.dataset.wslot; return renderChar(); }
+    const w = ev.target.closest('[data-wear]');
+    if (w) { w.disabled = true; await rpc('equip_item', { p_item: w.dataset.wear, p_on: w.dataset.on === '1' }, w.dataset.on === '1' ? 'ใส่แล้ว' : 'ถอดแล้ว'); return; }
+    const sw = ev.target.closest('[data-color]');
+    if (sw) { S.avatarDraft = Object.assign({}, S.profile.avatar, S.avatarDraft, { [sw.dataset.color]: sw.dataset.v }); return renderChar(); }
+    if (ev.target.closest('[data-avcancel]')) { S.avatarDraft = null; return renderChar(); }
+    if (ev.target.closest('[data-avsave]')) {
+      const a = S.avatarDraft; const ok = await rpc('set_avatar', { p_skin: a.skin, p_hair: a.hair, p_shirt: a.shirt, p_pants: a.pants, p_shoes: a.shoes }, 'บันทึกสีแล้ว');
+      if (ok) { S.avatarDraft = null; renderChar(); }
+    }
+  });
+  $('view-char').addEventListener('input', (ev) => {
+    const ci = ev.target.closest('[data-color-input]'); if (!ci) return;
+    S.avatarDraft = Object.assign({}, S.profile.avatar, S.avatarDraft, { [ci.dataset.colorInput]: ci.value });
+    if (App.avatar) App.avatar.show($('avatarSlot'), avatarSpec());
+  });
+  $('view-char').addEventListener('change', (ev) => { if (ev.target.closest('[data-color-input]')) renderChar(); });
 
   /* ---------- deck tab ---------- */
   function cardTile(c) {

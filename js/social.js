@@ -35,7 +35,7 @@
       me.role === 'parent' ? sb.rpc('family_pending_verifications') : Promise.resolve({ data: [] }),
       me.role === 'parent' ? sb.rpc('family_pending_habits') : Promise.resolve({ data: [] })
     ]);
-    S.family = f.data; S.famRole = me.role; S.famMembers = mem.data || []; S.famQuests = q.data || []; S.famPending = pend.data || []; S.famHabits = ph.data || [];
+    S.family = f.data; S.famRole = me.role; S.famMembers = mem.data || []; S.famQuests = q.data || []; S.famPending = Array.isArray(pend.data) ? pend.data : []; S.famHabits = Array.isArray(ph.data) ? ph.data : [];
   };
 
   function health(g) {
