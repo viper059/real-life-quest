@@ -1,8 +1,7 @@
 /* Real-life Quest — character (level, stats, equipment), identity check, career ranks, job-card deck. */
 (() => {
-  const { sb, S, CATS, RANKS, RANK_LABEL, $, esc, num, when, hours, rating, toast, rpc, refresh, loaders, renderers, openSheet, closeSheet, upload } = App;
+  const { sb, S, CATS, tier, tierTag, RANKS, RANK_LABEL, $, esc, num, when, hours, rating, toast, rpc, refresh, loaders, renderers, openSheet, closeSheet, upload } = App;
   const STATS = [['str', 'STR'], ['agi', 'AGI'], ['vit', 'VIT'], ['int', 'INT'], ['dex', 'DEX'], ['luk', 'LUK']];
-  const RARITY = { N: '#6b5540', R: '#1f6f6b', SR: '#8a5a0b', SSR: '#b3261e' };
   const SLOTS = [['head', 'หมวก'], ['body', 'เสื้อ'], ['feet', 'รองเท้า'], ['tool', 'เครื่องมือ'], ['acc', 'เครื่องประดับ'], ['frame', 'กรอบโปรไฟล์']];
 
   function levelInfo(exp) {
@@ -145,20 +144,21 @@
 
   /* ---------- deck tab ---------- */
   function cardTile(c) {
-    const owned = S.myCards.has(c.id), done = S.doneByCat[c.category] || 0;
-    return `<article class="card" style="display:flex;flex-direction:column;gap:6px;${owned ? '' : 'opacity:.75;border-style:dashed'}">
-      <span class="tag" style="background:${RARITY[c.rarity]};color:#fff;align-self:flex-start">${c.rarity}</span>
+    const owned = S.myCards.has(c.id), done = S.doneByCat[c.category] || 0, t = tier(c.tier);
+    const rankNote = c.min_career_rank ? ` · ต้องขั้นอาชีพ ${c.min_career_rank} ขึ้นไป` : '';
+    return `<article class="card job-card tier-${esc(t.id)}${t.glow && owned ? ' tier-glow' : ''}" style="display:flex;flex-direction:column;gap:6px;border-color:${t.color};border-width:2px;${owned ? '' : 'opacity:.7;border-style:dashed'}">
+      <div class="row between">${tierTag(c.tier)}<span class="small muted">${owned ? 'มีแล้ว' : 'ยังไม่ปลดล็อก'}</span></div>
       <h3 style="font-size:16px">${esc(c.name)}</h3>
       <span class="small" style="color:var(--teal-ink)">EXP +${c.exp_bonus_pct}% ${c.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + esc((CATS[c.category] || {}).label || c.category)}${Object.keys(c.stats || {}).length ? ' · ' + Object.entries(c.stats).map(([s, v]) => s.toUpperCase() + ' +' + v).join(' ') : ''}</span>
-      <span class="small muted">${owned ? 'มีแล้ว' : 'ปลดล็อก: ' + esc(c.description) + ` (${Math.min(done, c.unlock_count)}/${c.unlock_count})`}</span></article>`;
+      ${owned ? '' : `<span class="small muted">ปลดล็อก: ${esc(c.description)} (${num(Math.min(done, c.unlock_count))}/${num(c.unlock_count)})${rankNote}</span>`}</article>`;
   }
   function renderDeck() {
     const d = S.deck || {}, owned = S.cards.filter((c) => S.myCards.has(c.id));
-    const sel = (name, cur, empty) => `<select name="${name}">${empty ? '<option value="">— ว่าง —</option>' : ''}${owned.map((c) => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)} (${c.rarity})</option>`).join('')}</select>`;
-    const main = cardById(d.main_card);
+    const sel = (name, cur, empty) => `<select name="${name}">${empty ? '<option value="">— ว่าง —</option>' : ''}${owned.map((c) => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)} (${esc(tier(c.tier).label)})</option>`).join('')}</select>`;
+    const main = cardById(d.main_card), mt = main ? tier(main.tier) : null;
     $('deckPanel').innerHTML = `<div class="grid" style="align-items:start">
-      ${main ? `<div style="background:#2f4a3e;border:3px solid var(--gold-500);border-radius:14px;padding:16px;color:var(--on-wood);display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 0 var(--brass-600);min-height:200px;justify-content:flex-end">
-        <span style="font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--gold-500)">MAIN JOB · ${main.rarity}</span>
+      ${main ? `<div class="${mt.glow ? 'tier-glow ' : ''}tier-${esc(mt.id)}" style="background:linear-gradient(160deg,${mt.color} 0%,#2a1b11 85%);border:3px solid ${mt.color};border-radius:14px;padding:16px;color:var(--on-wood);display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 0 var(--brass-600);min-height:200px;justify-content:flex-end">
+        <span style="font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--gold-500)">MAIN JOB · ${esc(mt.label)}</span>
         <h2 style="font-size:24px">${esc(main.name)}</h2>
         <span class="small" style="color:#d9ede4">EXP +${main.exp_bonus_pct}% ${main.category === 'general' ? 'ทุกเควสต์' : 'เมื่อทำเควสต์' + esc((CATS[main.category] || {}).label || '')}</span></div>` : '<div class="empty">ยังไม่ได้เลือกการ์ดหลัก</div>'}
       <form id="deckForm" class="card stack">
@@ -166,9 +166,14 @@
         <label class="f">การ์ดเสริม 1${sel('s1', d.support1, true)}</label><label class="f">การ์ดเสริม 2${sel('s2', d.support2, true)}</label><label class="f">การ์ดเสริม 3${sel('s3', d.support3, true)}</label>
         <button class="btn primary" type="submit">บันทึกเด็ค</button>
         <span class="small muted">การ์ดอาชีพเพิ่ม EXP ชีวิต ไม่เพิ่มขั้นอาชีพ — ขั้นอาชีพได้จากงานจริงเท่านั้น</span></form></div>`;
-    $('cardList').innerHTML = S.cards.map(cardTile).join('');
+    const ord = (c) => tier(c.tier).ord;
+    const counts = {}; S.cards.forEach((c) => { if (S.myCards.has(c.id)) counts[c.tier] = (counts[c.tier] || 0) + 1; });
+    $('cardList').innerHTML = `<div class="row scroll-x" style="grid-column:1/-1">${['all', ...S.tiers.map((t) => t.id)].map((k) => `<button class="pill" data-tierf="${k}" aria-pressed="${(S.tierFilter || 'all') === k}">${k === 'all' ? 'ทุกระดับ' : esc(tier(k).label) + (counts[k] ? ' · ' + counts[k] : '')}</button>`).join('')}</div>`
+      + S.cards.filter((c) => !S.tierFilter || S.tierFilter === 'all' || c.tier === S.tierFilter)
+        .sort((a, b) => ord(a) - ord(b) || (S.myCards.has(b.id) - S.myCards.has(a.id)) || a.sort - b.sort).map(cardTile).join('');
   }
   renderers.push(renderChar, renderDeck);
+  $('cardList').addEventListener('click', (ev) => { const b = ev.target.closest('[data-tierf]'); if (b) { S.tierFilter = b.dataset.tierf; renderDeck(); } });
 
   /* ---------- identity check ---------- */
   function openKyc() {

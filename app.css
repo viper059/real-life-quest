@@ -136,3 +136,14 @@ label.f input:focus,label.f select:focus,label.f textarea:focus{outline:2px soli
 .toast.err{border-color:var(--danger)}
 @media (min-width:900px){.toast{bottom:24px}}
 label.row.small{flex-wrap:nowrap;align-items:flex-start}label.row.small input{flex:none;margin-top:1px}
+/* rarity tiers */
+.tier-glow{animation:tierGlow 2.4s ease-in-out infinite}
+@keyframes tierGlow{0%,100%{box-shadow:0 0 0 0 rgba(232,177,58,0)}50%{box-shadow:0 0 14px 2px rgba(232,177,58,.45)}}
+.tier-mythic.tier-glow{animation-name:glowMythic}@keyframes glowMythic{0%,100%{box-shadow:0 0 0 0 rgba(179,38,30,0)}50%{box-shadow:0 0 14px 2px rgba(179,38,30,.45)}}
+.tier-super_mythic.tier-glow{animation-name:glowSuper}@keyframes glowSuper{0%,100%{box-shadow:0 0 0 0 rgba(194,24,91,0)}50%{box-shadow:0 0 16px 3px rgba(194,24,91,.5)}}
+.tier-divine.tier-glow{animation-name:glowDivine}@keyframes glowDivine{0%,100%{box-shadow:0 0 0 0 rgba(31,143,179,0)}50%{box-shadow:0 0 18px 3px rgba(31,143,179,.55)}}
+.tier-tag.tier-super_mythic{background:linear-gradient(90deg,#b3261e,#c2185b,#6a3fb5)!important}
+.tier-tag.tier-divine{background:linear-gradient(90deg,#1f8fb3,#8fd3ce)!important;color:#0d2f3a!important}
+.tier-tag.tier-heaven{background:linear-gradient(90deg,#e8b13a,#fff3c4,#e8b13a)!important;color:#5c3d06!important;box-shadow:0 0 6px rgba(232,177,58,.7)}
+.card.tier-heaven{background:linear-gradient(180deg,#fffaf0,var(--parchment-100))}
+@media (prefers-reduced-motion:reduce){.tier-glow{animation:none}}

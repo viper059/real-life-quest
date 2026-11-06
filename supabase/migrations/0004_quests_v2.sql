@@ -425,6 +425,19 @@ end $$;
 -- ---------- settlement ----------
 -- Pays p_worker_pct of the escrow to the worker (minus the platform fee) and refunds the rest to the poster.
 -- The job counts toward the worker's career only when they receive at least half.
+-- Grants every job card the worker now qualifies for in a category (0008 adds career-rank gates).
+create function public._unlock_cards(p_user uuid, p_cat text, p_done int)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into user_cards (user_id, card_id)
+  select p_user, jc.id from job_cards jc where jc.category = p_cat and jc.unlock_count <= p_done
+  on conflict do nothing;
+$$;
+revoke execute on function public._unlock_cards(uuid, text, int) from public, anon, authenticated;
+
 create function public._settle(p_quest uuid, p_worker_pct int, p_reason text)
 returns void
 language plpgsql
@@ -465,9 +478,7 @@ begin
     perform _grant_exp(q.worker_id, v_exp);
     update profiles set quests_done = quests_done + 1 where id = q.worker_id;
     select count(*) into v_done from quests where worker_id = q.worker_id and status = 'completed' and category = q.category;
-    insert into user_cards (user_id, card_id)
-    select q.worker_id, jc.id from job_cards jc where jc.category = q.category and jc.unlock_count <= v_done + 1
-    on conflict do nothing;
+    perform _unlock_cards(q.worker_id, q.category, v_done + 1);
 
     -- career credit: verified hours (capped at 1.5x the estimate); at most 5 counted jobs per poster per 30 days
     if exists (select 1 from occupations where id = q.category) then

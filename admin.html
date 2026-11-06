@@ -125,7 +125,7 @@ tr.sel td{background:var(--parchment-200)}
   const ERR = [['forbidden', 'บทบาทของคุณไม่มีสิทธิ์ทำสิ่งนี้'], ['second approval must come', 'ผู้อนุมัติคนที่ 2 ต้องเป็นคนละคนกับคนแรก'],
     ['cannot decide your own', 'อนุมัติคำขอของตัวเองไม่ได้'], ['owner permissions are locked', 'สิทธิ์ของเจ้าของระบบแก้ไม่ได้'],
     ['cannot remove the last owner', 'ต้องมีเจ้าของระบบอย่างน้อย 1 คน'], ['withdrawal not open', 'คำขอนี้ถูกตัดสินไปแล้ว'],
-    ['bad rate', 'อัตราต้องเป็นตัวเลข เช่น 0.25'], ['fund too low', 'เงินในกองทุนไม่พอจ่าย'], ['claim not approved', 'เคลมนี้ถูกตัดสินไปแล้ว'], ['must be a whole number', 'ต้องเป็นจำนวนเต็ม'], ['cannot review your own', 'ตรวจคำขอของตัวเองไม่ได้'], ['cannot judge your own', 'ตัดสินงานที่ตัวเองเกี่ยวข้องไม่ได้'], ['not pending', 'รายการนี้ถูกตัดสินไปแล้ว'], ['dispute not open', 'ข้อพิพาทนี้ปิดแล้ว'], ['percent must be', 'เปอร์เซ็นต์ต้องอยู่ระหว่าง 0–100'], ['rank changed since request', 'ขั้นของผู้ใช้เปลี่ยนไปแล้ว'], ['bad promptpay', 'เลขพร้อมเพย์ต้องเป็น 10 หรือ 13 หลัก'], ['out of range', 'ค่าอยู่นอกช่วงที่อนุญาต'], ['Invalid login credentials', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง']];
+    ['bad rate', 'อัตราต้องเป็นตัวเลข เช่น 0.25'], ['fund too low', 'เงินในกองทุนไม่พอจ่าย'], ['claim not approved', 'เคลมนี้ถูกตัดสินไปแล้ว'], ['must be a whole number', 'ต้องเป็นจำนวนเต็ม'], ['cannot review your own', 'ตรวจคำขอของตัวเองไม่ได้'], ['cannot judge your own', 'ตัดสินงานที่ตัวเองเกี่ยวข้องไม่ได้'], ['not pending', 'รายการนี้ถูกตัดสินไปแล้ว'], ['dispute not open', 'ข้อพิพาทนี้ปิดแล้ว'], ['percent must be', 'เปอร์เซ็นต์ต้องอยู่ระหว่าง 0–100'], ['rank changed since request', 'ขั้นของผู้ใช้เปลี่ยนไปแล้ว'], ['bad promptpay', 'เลขพร้อมเพย์ต้องเป็น 10 หรือ 13 หลัก'], ['out of range', 'ค่าอยู่นอกช่วงที่อนุญาต'], ['cannot be sold', 'ของระดับดีวายและสวรรค์ขายไม่ได้ ได้จากขั้นอาชีพเท่านั้น'], ['Invalid login credentials', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง']];
   const errText = (e) => { const m = (e && e.message) || String(e); const h = ERR.find(([k]) => m.includes(k)); return h ? h[1] : m; };
   let tt; function toast(m, bad) { const t = $('toast'); t.textContent = m; t.classList.toggle('err', !!bad); t.classList.remove('hidden'); clearTimeout(tt); tt = setTimeout(() => t.classList.add('hidden'), 3400); }
 
@@ -527,8 +527,8 @@ tr.sel td{background:var(--parchment-200)}
   };
 
   VIEWS.shop = async () => {
-    const { data, error } = await sb.from('shop_items').select('*').order('sort');
-    if (error) throw error;
+    const [{ data, error }, { data: tiers }] = await Promise.all([sb.from('shop_items').select('*').order('sort'), sb.from('rarity_tiers').select('*').order('ord')]);
+    if (error) throw error; S.tiers = tiers || [];
     const edit = can('m.shop');
     const KIND = { frame: 'กรอบ', title: 'ฉายา', costume: 'ชุด', boost: 'บูสต์' };
     const form = (i) => `<form class="card" data-shop="${esc(i ? i.id : '')}" style="display:flex;flex-direction:column;gap:8px">
@@ -537,10 +537,11 @@ tr.sel td{background:var(--parchment-200)}
       <div class="row"><label class="f">ประเภท<select name="kind">${Object.entries(KIND).map(([k, v]) => `<option value="${k}" ${i && i.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <label class="f">ช่อง<select name="slot"><option value="">—</option>${['head', 'body', 'feet', 'tool', 'acc'].map((s) => `<option ${i && i.slot === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
         <label class="f" style="flex:1 1 100px">ราคา (C)<input name="price" type="number" min="0" value="${i ? i.price_crystal : 0}" required></label>
+        <label class="f">ระดับ<select name="tier">${(S.tiers || []).map((t) => `<option value="${t.id}" ${(i ? i.tier : 'common') === t.id ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}</select></label>
         <label class="row small"><input type="checkbox" name="active" ${!i || i.active ? 'checked' : ''}> ขายอยู่</label></div>
       <label class="f">คำอธิบาย<input name="desc" value="${esc(i ? i.description || '' : '')}" maxlength="200"></label>
       ${edit ? `<button class="btn ${i ? 'sec' : 'primary'}" type="submit">${i ? 'บันทึก' : 'เพิ่มสินค้า'}</button>` : ''}</form>`;
-    $('content').innerHTML = `<div><h1 style="font-size:28px">ร้านค้า Crystal</h1><p class="muted" style="margin:4px 0 0">ขายของตกแต่งและความสะดวกเท่านั้น ห้ามขายสิ่งที่เพิ่มขั้นอาชีพหรือคะแนนรีวิว เพื่อให้ขั้นอาชีพมาจากงานจริง</p></div>
+    $('content').innerHTML = `<div><h1 style="font-size:28px">ร้านค้า Crystal</h1><p class="muted" style="margin:4px 0 0">ขายของตกแต่งและความสะดวกเท่านั้น ห้ามขายสิ่งที่เพิ่มขั้นอาชีพหรือคะแนนรีวิว · ระดับดีวายและสวรรค์ขายไม่ได้ ได้จากขั้นอาชีพ A และ S เท่านั้น</p></div>
       ${edit ? '<h2 style="font-size:17px">เพิ่มสินค้าใหม่</h2>' + form(null) : ''}
       <h2 style="font-size:17px">สินค้าทั้งหมด</h2><div class="kpis" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">${data.map(form).join('')}</div>`;
   };
@@ -635,7 +636,8 @@ tr.sel td{background:var(--parchment-200)}
     }
     if (f.dataset.shop !== undefined) {
       const e = f.elements;
-      if (await rpc('save_shop_item', { p_id: e.id.value.trim(), p_name: e.nm.value.trim(), p_kind: e.kind.value, p_slot: e.slot.value || null, p_price: Number(e.price.value), p_description: e.desc.value.trim() || null, p_active: e.active.checked }, 'บันทึกสินค้าแล้ว')) reload(); return;
+      if (await rpc('save_shop_item', { p_id: e.id.value.trim(), p_name: e.nm.value.trim(), p_kind: e.kind.value, p_slot: e.slot.value || null, p_price: Number(e.price.value), p_description: e.desc.value.trim() || null, p_active: e.active.checked })
+        && await rpc('set_shop_item_tier', { p_id: e.id.value.trim(), p_tier: e.tier.value }, 'บันทึกสินค้าแล้ว')) reload(); return;
     }
     if (f.id === 'addStaff') {
       const { data: p } = await sb.from('profiles').select('id').eq('username', f.elements.u.value.trim()).maybeSingle();

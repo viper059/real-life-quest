@@ -130,6 +130,11 @@
     return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
   }
 
+  /* ---------- rarity tiers (ธรรมดา → สวรรค์) ---------- */
+  const TIER_FALLBACK = { id: 'common', ord: 1, label: 'ธรรมดา', color: '#6b5540', glow: false };
+  const tier = (id) => (S.tiers.find((t) => t.id === id) || TIER_FALLBACK);
+  const tierTag = (id) => { const t = tier(id); return `<span class="tag tier-tag tier-${esc(t.id)}" style="background:${t.color};color:#fff">${esc(t.label)}</span>`; };
+
   /* ---------- state ---------- */
   const S = {
     user: null, profile: null, priv: null, kycReq: null, wallet: null, settings: {}, occupations: [],
@@ -137,7 +142,7 @@
     tx: [], wd: [], orders: [], careers: [], cards: [], myCards: new Set(), deck: null, doneByCat: {},
     guilds: [], memberCount: {}, myGuild: null, myGuildRole: null, gMembers: [], claims: [], myVotes: {},
     family: null, famRole: null, famMembers: [], famQuests: [], famPending: [],
-    shop: [], myItems: {}, notifs: [], unread: 0, day: null, month: null,
+    shop: [], myItems: {}, tiers: [], notifs: [], unread: 0, day: null, month: null,
     tab: 'board', qsub: 'board', psub: 'day', cat: 'all', view: 'list', near: false, myPos: null, openQuest: null, channel: null
   };
 
@@ -153,16 +158,17 @@
   const loaders = {
     async me() {
       const uid = S.user.id;
-      const [p, w, st, pv, kr, oc] = await Promise.all([
+      const [p, w, st, pv, kr, oc, tr] = await Promise.all([
         sb.from('profiles').select('*').eq('id', uid).single(),
         sb.from('wallets').select('*').eq('user_id', uid).single(),
         sb.from('app_settings').select('key,value'),
         sb.from('private_profiles').select('*').eq('user_id', uid).maybeSingle(),
         sb.from('kyc_requests').select('status,note,created_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        sb.from('occupations').select('*').order('sort')
+        sb.from('occupations').select('*').order('sort'),
+        S.tiers.length ? Promise.resolve({ data: S.tiers }) : sb.from('rarity_tiers').select('*').order('ord')
       ]);
       if (p.error) throw p.error; if (w.error) throw w.error;
-      S.profile = p.data; S.wallet = w.data; S.priv = pv.data; S.kycReq = kr.data; S.occupations = oc.data || [];
+      S.profile = p.data; S.wallet = w.data; S.priv = pv.data; S.kycReq = kr.data; S.occupations = oc.data || []; S.tiers = tr.data || [];
       S.settings = Object.fromEntries((st.data || []).map((r) => [r.key, r.value]));
     },
     async notifs() {
@@ -368,6 +374,6 @@
   window.App = {
     sb, S, CATS, RANKS, RANK_LABEL, TX, $, esc, num, ago, when, hours, rating, toast, errText, rpc, refresh, render,
     loaders, renderers, setTab, setQsub, openSheet, closeSheet, route, distanceKm, geolocate, parseMapsLink, mapsUrl, navUrl,
-    upload, signedUrl, promptpayPayload, qrSvg, boot, enablePush
+    upload, signedUrl, promptpayPayload, qrSvg, boot, enablePush, tier, tierTag
   };
 })();
