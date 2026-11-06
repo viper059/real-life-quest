@@ -57,14 +57,16 @@
       ${openOrders.length ? `<div class="section"><h2 style="font-size:17px">คำสั่งเติมเงินที่ค้างอยู่</h2><div class="card" style="padding:4px 14px">${openOrders.map((o) => `<div class="tx" style="flex-wrap:wrap">
         <div style="flex:1 1 180px;min-width:0"><b>${num(o.units)} ${o.currency === 'gold' ? 'G' : 'C'}</b> · ${baht(o.amount_thb)} บาท<div class="small muted">รหัส ${esc(o.ref_code)} · ${OSTATUS[o.status]} · ${ago(o.created_at)}</div></div>
         ${o.status === 'pending' ? `<button class="btn action sm" data-order="${o.id}">ชำระ/แนบสลิป</button><button class="btn sec sm" data-ocancel="${o.id}">ยกเลิก</button>` : ''}</div>`).join('')}</div></div>` : ''}
-      <div class="section"><div class="row between"><h2 style="font-size:17px">ร้านค้า Crystal</h2><span class="small muted">ของแต่งตัว ฉายา กรอบ และช่องเควสต์ส่วนตัว</span></div>
-        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${S.shop.filter((i) => i.active || S.myItems[i.id] || ['divine', 'heaven'].includes(i.tier)).sort((a, b) => tier(a.tier).ord - tier(b.tier).ord || a.sort - b.sort).map((i) => {
+      <div class="section"><div class="row between"><h2 style="font-size:17px">ร้านค้า Crystal</h2><span class="small muted">ของใช้ ของแต่งตัว ฉายา กรอบ และช่องเควสต์ส่วนตัว</span></div>
+        <div class="row small" style="gap:6px">ระดับไอเทม: ${S.tiers.map((t) => t.obtainable ? tierTag(t.id) : `<span class="tag" style="background:var(--parchment-200);color:var(--ink-muted);border:1px dashed var(--brass-600)" title="ยังไม่เปิด">🔒 ${esc(t.label)}</span>`).join('')}</div>
+        <span class="small muted">ตอนนี้หาได้สูงสุดระดับอีปิก · ระดับรีเจนขึ้นไปยังไม่เปิด</span>
+        <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${S.shop.filter((i) => i.active || S.myItems[i.id]).sort((a, b) => tier(a.tier).ord - tier(b.tier).ord || a.sort - b.sort).map((i) => {
           const own = S.myItems[i.id];
           const t = tier(i.tier);
           return `<article class="card stack${t.glow ? ' tier-glow' : ''} tier-${esc(t.id)}" style="gap:6px;border-color:${own && own.equipped ? 'var(--teal-600)' : t.color};border-width:2px">
             <div class="row between"><span class="row" style="gap:4px">${tierTag(i.tier)}<span class="tag" style="background:var(--parchment-200);color:var(--ink-soft)">${KIND[i.kind]}${i.slot ? ' · ' + i.slot : ''}</span></span>${i.kind === 'frame' && i.data && i.data.color ? `<span aria-hidden="true" style="width:18px;height:18px;border-radius:50%;border:3px solid ${esc(i.data.color)}"></span>` : ''}</div>
             <b>${esc(i.name)}</b><span class="small muted">${esc(i.description || '')}</span>
-            <div class="row between dash" style="margin-top:auto"><span class="gold" style="color:var(--crystal-ink)">${i.price_crystal ? num(i.price_crystal) + ' C' : i.tier === 'divine' ? 'ได้จากขั้น A' : i.tier === 'heaven' ? 'ได้จากขั้น S' : 'รางวัล'}</span>
+            <div class="row between dash" style="margin-top:auto"><span class="gold" style="color:var(--crystal-ink)">${i.price_crystal ? num(i.price_crystal) + ' C' : 'รางวัล'}</span>
               ${!own ? (i.active && i.price_crystal ? `<button class="btn primary sm" data-buy="${i.id}">ซื้อ</button>` : '') : i.kind === 'boost' ? '<span class="small" style="color:var(--teal-ink)">ใช้งานอยู่</span>'
                 : `<button class="btn ${own.equipped ? 'sec' : 'action'} sm" data-equip="${i.id}" data-on="${own.equipped ? 0 : 1}">${own.equipped ? 'ถอด' : 'ใส่'}</button>`}</div></article>`;
         }).join('') || '<div class="empty">ร้านยังไม่เปิด</div>'}</div></div>
