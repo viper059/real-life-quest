@@ -92,14 +92,17 @@
       case 'weekdays only': return 'เฉพาะวันจันทร์–ศุกร์';
       case 'do the earlier step first': return 'ต้องเช็กอินไปเรียน/ทำงานก่อน';
       case 'set your place first': return `ตั้งตำแหน่ง${PLACE[h.place]}ก่อน`;
+      case 'choose your role': return 'เลือกก่อนว่าเป็นนักเรียนหรือคนทำงาน';
       default: return h.block || '';
     }
   }
   function habitsView(H) {
     const pct = Math.min(100, Math.round(H.exp_today / H.cap * 100)), full = H.exp_today >= H.cap;
-    const f = S.habitGrp || 'all';
-    const groups = HGRP.filter(([g]) => f === 'all' || f === g);
-    const needPlace = ['school', 'work', 'home'];
+    const role = H.life_role, f = S.habitGrp || 'all';
+    const visible = HGRP.filter(([g]) => (g !== 'student' && g !== 'worker') || g === role);
+    const groups = visible.filter(([g]) => f === 'all' || f === g);
+    const needPlace = role === 'student' ? ['school', 'home'] : role === 'worker' ? ['work', 'home'] : [];
+    const roleLocked = H.role_locked_until && new Date(H.role_locked_until) > Date.now();
     return `<div class="stack">
       <div class="card wood stack">
         <div class="row between"><b style="font-family:var(--font-display);font-size:17px">กิจวัตรวันนี้</b><span class="small" style="color:var(--on-wood-muted)">ตอนนี้ ${esc(H.now)} น.</span></div>
@@ -107,8 +110,11 @@
         <div class="bar dark"><div style="width:${pct}%;background:${full ? 'var(--crystal)' : 'var(--exp)'}"></div></div>
         <span class="small" style="color:var(--on-wood-muted)">${full ? 'ครบเพดานวันนี้แล้ว — ทำต่อได้เพื่อสุขภาพ แต่ไม่ได้ EXP เพิ่ม' : 'แต่ละอย่างได้ EXP ไม่เท่ากัน มีจำนวนครั้งต่อวัน ระยะห่าง และช่วงเวลา กันกดรัว'}</span>
       </div>
-      <div class="row scroll-x">${[['all', 'ทั้งหมด'], ...HGRP].map(([k, v]) => `<button class="pill" data-hgrp="${k}" aria-pressed="${f === k}">${v}</button>`).join('')}</div>
-      ${(f === 'all' || f === 'student' || f === 'worker') ? `<div class="card stack"><b>ตำแหน่งสำหรับเช็กอิน</b>
+      <div class="card stack"><b>ฉันเป็น</b>
+        <div class="row">${[['student', '🎒 นักเรียน'], ['worker', '💼 คนทำงาน']].map(([k, v]) => `<button class="btn ${role === k ? 'primary' : 'sec'}" style="flex:1" data-hrole="${k}" ${role === k || (roleLocked && role) ? 'disabled' : ''} aria-pressed="${role === k}">${v}</button>`).join('')}</div>
+        <span class="small muted">${role ? (roleLocked ? 'เปลี่ยนได้อีกครั้ง ' + new Date(H.role_locked_until).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'เปลี่ยนได้ เปลี่ยนแล้วล็อก 30 วัน') : 'เลือกเพื่อเปิดกิจวัตรของนักเรียนหรือคนทำงาน · เปลี่ยนแล้วล็อก 30 วัน'}</span></div>
+      <div class="row scroll-x">${[['all', 'ทั้งหมด'], ...visible].map(([k, v]) => `<button class="pill" data-hgrp="${k}" aria-pressed="${f === k}">${v}</button>`).join('')}</div>
+      ${needPlace.length && (f === 'all' || f === role) ? `<div class="card stack"><b>ตำแหน่งสำหรับเช็กอิน</b>
         <span class="small muted">ตั้งตอนอยู่ที่นั่นจริง · ตั้งแล้วเปลี่ยนได้อีกครั้งหลัง 30 วัน · เห็นเฉพาะคุณ</span>
         <div class="row">${needPlace.map((k) => { const p = H.places[k]; const locked = p && new Date(p.locked_until) > Date.now();
           return `<button class="btn ${p ? 'sec' : 'action'} sm" data-hplace="${k}" ${locked ? 'disabled' : ''}>${p ? '✓ ' : ''}${PLACE[k]}${locked ? ' · ล็อกถึง ' + new Date(p.locked_until).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : p ? ' · ตั้งใหม่' : ' · ตั้งที่นี่'}</button>`; }).join('')}</div></div>` : ''}
@@ -139,6 +145,13 @@
   $('qsub-plan').addEventListener('click', async (ev) => {
     const s = ev.target.closest('[data-psub]'); if (s) { S.psub = s.dataset.psub; return renderPlan(); }
     const g = ev.target.closest('[data-hgrp]'); if (g) { S.habitGrp = g.dataset.hgrp; return renderPlan(); }
+    const rl = ev.target.closest('[data-hrole]');
+    if (rl) {
+      const name = rl.dataset.hrole === 'student' ? 'นักเรียน' : 'คนทำงาน';
+      if (!confirm(`ตั้งเป็น${name}? เปลี่ยนได้อีกครั้งหลัง 30 วัน`)) return;
+      rl.disabled = true; S.habitGrp = 'all';
+      await rpc('set_life_role', { p_role: rl.dataset.hrole }, `ตั้งเป็น${name}แล้ว`); return;
+    }
     const pl = ev.target.closest('[data-hplace]');
     if (pl) {
       const k = pl.dataset.hplace, name = { home: 'บ้าน', school: 'โรงเรียน', work: 'ที่ทำงาน' }[k];

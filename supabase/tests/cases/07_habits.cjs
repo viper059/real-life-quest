@@ -33,8 +33,13 @@ module.exports = async (t) => {
   await t.throws(`select log_habit('exercise', null, null, 'someone/x.jpg')`, 'bad file path', 'photo must be own folder');
   await t.q(`select log_habit('exercise', null, null, '${U}/run.jpg')`);
 
-  // places and school day
+  // student or worker
   await clock('2026-11-05 07:30'); await t.as(U);
+  await t.throws(`select log_habit('go_school', 13.75, 100.5)`, 'choose your role', 'must pick student or worker first');
+  await t.q(`select set_life_role('student')`);
+  await t.throws(`select log_habit('plan_day')`, 'not your role', 'student cannot log worker habits');
+  await t.throws(`select set_life_role('worker')`, 'locked for 30 days', 'role switch locked 30 days');
+  // places and school day
   await t.throws(`select log_habit('go_school', 13.75, 100.5)`, 'set your place first', 'school must be saved');
   await t.q(`select set_place('school', 13.75, 100.50)`); await t.q(`select set_place('home', 13.80, 100.55)`);
   await t.throws(`select set_place('school', 13.0, 100.0)`, 'locked for 30 days', 'cannot move school to cheat');
@@ -43,7 +48,7 @@ module.exports = async (t) => {
   await clock('2026-11-05 16:00'); await t.as(U);
   await t.q(`select log_habit('back_home', 13.8001, 100.5501)`);
   await clock('2026-11-06 16:00'); await t.as(U);
-  await t.throws(`select log_habit('back_home', 13.8001, 100.5501)`, 'earlier step first', 'back home needs school or work first');
+  await t.throws(`select log_habit('back_home', 13.8001, 100.5501)`, 'earlier step first', 'back home needs school first');
   await clock('2026-11-07 08:00'); await t.as(U);
   await t.throws(`select log_habit('go_school', 13.7502, 100.5001)`, 'weekdays only', 'no school check-in on Saturday');
 
@@ -73,7 +78,7 @@ module.exports = async (t) => {
   const P = await t.user('habit_parent'); const K = await t.user('habit_kid'); const X = await t.user('habit_other');
   await t.as(P); await t.q(`select create_family('บ้านกิจวัตร')`);
   await t.admin(); const code = await t.one(`select join_code from families where name = 'บ้านกิจวัตร'`);
-  await t.as(K); await t.q(`select join_family($1, 'child')`, [code]);
+  await t.as(K); await t.q(`select join_family($1, 'child')`, [code]); await t.q(`select set_life_role('student')`);
   await clock('2026-11-09 18:00'); await t.as(K);
   r = await t.one(`select log_habit('homework')`);
   t.eq(r.status, 'pending', 'homework waits for parent');
@@ -84,6 +89,21 @@ module.exports = async (t) => {
   t.eq((await t.one(`select family_pending_habits()`)).length, 1, 'parent sees pending homework');
   await t.q(`select verify_habit(${r.id}, true)`);
   await t.admin(); t.eq(await t.one(`select base_exp from profiles where id = $1`, [K]), 10, 'homework 10 EXP after approval');
+  // worker path
+  const Wk = await t.user('habit_worker');
+  await clock('2026-11-10 07:00'); await t.as(Wk);
+  await t.q(`select set_life_role('worker')`);
+  await t.throws(`select log_habit('homework')`, 'not your role', 'worker cannot log homework');
+  await t.q(`select log_habit('plan_day')`);
+  await t.throws(`select log_habit('done_plan')`, 'outside time window', 'close-out only in the evening');
+  await t.q(`select set_place('work', 13.70, 100.40)`); await t.q(`select set_place('home', 13.80, 100.55)`);
+  await t.q(`select log_habit('go_work', 13.7001, 100.4001)`);
+  await clock('2026-11-10 08:30'); await t.as(Wk);
+  await t.q(`select log_habit('stretch')`); await t.throws(`select log_habit('stretch')`, 'too soon', 'stretch every 2 hours');
+  await clock('2026-11-10 18:30'); await t.as(Wk);
+  await t.q(`select log_habit('done_plan')`); await t.q(`select log_habit('back_home_work', 13.8001, 100.5501)`);
+  await t.admin(); t.eq(await t.one(`select base_exp from profiles where id = $1`, [Wk]), 24, 'worker day: 3+10+1+5+5');
+  await t.as(Wk); t.eq((await t.one(`select my_habits()`)).life_role, 'worker', 'my_habits reports role');
   await t.as(U); await clock('2026-11-10 18:00'); await t.as(U);
   await t.throws(`select log_habit('homework')`, 'photo required', 'no parent → photo needed');
 

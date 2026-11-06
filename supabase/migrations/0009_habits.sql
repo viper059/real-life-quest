@@ -8,6 +8,11 @@
 
 insert into public.app_settings (key, value) values ('habit_exp_cap', '60') on conflict (key) do nothing;
 
+-- Student or worker: decides which role-specific habits a player sees and can log. Changeable once every 30 days.
+alter table public.profiles
+  add column life_role text check (life_role in ('student','worker')),
+  add column life_role_set_at timestamptz;
+
 -- Test hook: the clock habits use. Production always returns now().
 create function public._clock()
 returns timestamptz
@@ -51,11 +56,18 @@ insert into public.habit_templates (id, title, grp, icon, exp, max_per_day, min_
   ('meditate',     'นั่งสมาธิ 10 นาที',            'mind',    '🧘', 3, 1, 0,   null,    null,    false, 'none',     null,     '{}', null, 41),
   ('save_money',   'เก็บเงินออมวันนี้',             'mind',    '🐷', 3, 1, 0,   null,    null,    false, 'none',     null,     '{}', null, 42),
   ('go_school',    'ไปถึงโรงเรียน',                'student', '🏫', 10, 1, 0,  '06:00', '09:30', true,  'location', 'school', '{}', 'เช็กอินที่โรงเรียน 06:00–09:30 วันจันทร์–ศุกร์', 50),
-  ('back_home',    'กลับถึงบ้าน',                  'student', '🏠', 5, 1, 0,   '12:00', '21:00', true,  'location', 'home',   '{go_school,go_work}', 'เช็กอินที่บ้าน หลังไปเรียนหรือไปทำงานวันนี้', 51),
+  ('back_home',    'กลับถึงบ้านหลังเลิกเรียน',      'student', '🏠', 5, 1, 0,   '12:00', '21:00', true,  'location', 'home',   '{go_school}', 'เช็กอินที่บ้าน หลังเช็กอินที่โรงเรียนวันนี้', 51),
   ('homework',     'ทำการบ้าน',                    'student', '✏️', 10, 1, 0,  '12:00', '23:30', false, 'parent',   null,     '{}', 'ผู้ปกครองรับรอง หรือแนบรูปการบ้านถ้าไม่มีผู้ปกครองในระบบ', 52),
   ('review_lesson','ทบทวนบทเรียน 30 นาที',          'student', '📚', 5, 1, 0,   null,    null,    false, 'none',     null,     '{}', null, 53),
   ('pack_bag',     'จัดกระเป๋าสำหรับพรุ่งนี้',       'student', '🎒', 2, 1, 0,   '17:00', '23:30', false, 'none',     null,     '{}', 'ช่วงเย็น', 54),
-  ('go_work',      'ไปถึงที่ทำงานตรงเวลา',         'worker',  '🏢', 10, 1, 0,  '05:00', '10:00', true,  'location', 'work',   '{}', 'เช็กอินที่ทำงาน 05:00–10:00 วันจันทร์–ศุกร์', 60);
+  ('go_work',      'ไปถึงที่ทำงานตรงเวลา',         'worker',  '🏢', 10, 1, 0,  '05:00', '10:00', true,  'location', 'work',   '{}', 'เช็กอินที่ทำงาน 05:00–10:00 วันจันทร์–ศุกร์', 60),
+  ('plan_day',     'วางแผนงานวันนี้ 3 ข้อ',          'worker',  '📋', 3, 1, 0,   '05:00', '11:00', false, 'none',     null,     '{}', 'ช่วงเช้า ก่อนเริ่มงาน', 61),
+  ('stretch',      'ลุกเดิน ยืดเส้น',               'worker',  '🤸', 1, 4, 120, '08:00', '20:00', false, 'none',     null,     '{}', 'ทุก 2 ชม. วันละไม่เกิน 4 ครั้ง', 62),
+  ('lunch_break',  'พักเที่ยงจริง ไม่กินหน้าจอ',      'worker',  '🥪', 2, 1, 0,   '11:00', '14:00', false, 'none',     null,     '{}', 'ช่วง 11:00–14:00', 63),
+  ('done_plan',    'ปิดงานครบตามแผน',              'worker',  '✅', 5, 1, 0,   '15:00', '23:59', false, 'none',     null,     '{plan_day}', 'หลังวางแผนงานตอนเช้า', 64),
+  ('skill_up',     'เรียนรู้ทักษะงาน 30 นาที',        'worker',  '🧠', 5, 1, 0,   null,    null,    false, 'none',     null,     '{}', null, 65),
+  ('budget',       'จดรายรับรายจ่ายวันนี้',          'worker',  '💰', 3, 1, 0,   '17:00', '23:59', false, 'none',     null,     '{}', 'ช่วงเย็น', 66),
+  ('back_home_work','กลับถึงบ้านหลังเลิกงาน',        'worker',  '🏠', 5, 1, 0,   '14:00', '23:59', true,  'location', 'home',   '{go_work}', 'เช็กอินที่บ้าน หลังเช็กอินที่ทำงานวันนี้', 67);
 
 create table public.user_places (
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -116,9 +128,14 @@ stable
 security definer
 set search_path = public
 as $$
-declare v_day date := _bkk_day(); v_now time := _bkk_now_time(); v_count int; v_last timestamptz; v_dow int;
+declare v_day date := _bkk_day(); v_now time := _bkk_now_time(); v_count int; v_last timestamptz; v_dow int; v_role text;
 begin
   if not h.active then return 'not available'; end if;
+  if h.grp in ('student','worker') then
+    v_role := (select life_role from profiles where id = p_user);
+    if v_role is null then return 'choose your role'; end if;
+    if v_role <> h.grp then return 'not your role'; end if;
+  end if;
   select count(*), max(logged_at) into v_count, v_last from habit_logs
    where user_id = p_user and habit_id = h.id and day = v_day and status <> 'rejected';
   if v_count >= h.max_per_day then return 'done for today'; end if;
@@ -160,6 +177,8 @@ begin
     'day', v_day, 'now', to_char(_bkk_now_time(), 'HH24:MI'),
     'exp_today', _habit_exp_today(v_uid), 'cap', _setting_int('habit_exp_cap', 60),
     'has_parent', _has_parent(v_uid),
+    'life_role', (select life_role from profiles where id = v_uid),
+    'role_locked_until', (select life_role_set_at + interval '30 days' from profiles where id = v_uid),
     'places', coalesce((select jsonb_object_agg(kind, jsonb_build_object('set_at', set_at,
                  'locked_until', set_at + interval '30 days')) from user_places where user_id = v_uid), '{}'::jsonb),
     'habits', coalesce((select jsonb_agg(jsonb_build_object(
@@ -171,6 +190,21 @@ begin
         'next_at', (select max(logged_at) + make_interval(mins => h.min_gap_min) from habit_logs l
                      where l.user_id = v_uid and l.habit_id = h.id and l.day = v_day and l.status <> 'rejected'),
         'block', _habit_block(v_uid, h)) order by h.sort) from habit_templates h where h.active), '[]'::jsonb));
+end $$;
+
+create function public.set_life_role(p_role text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_uid uuid := public._assert_active(); p profiles%rowtype;
+begin
+  if p_role not in ('student','worker') then raise exception 'bad role'; end if;
+  select * into p from profiles where id = v_uid for update;
+  if p.life_role = p_role then return; end if;
+  if p.life_role_set_at is not null and _clock() < p.life_role_set_at + interval '30 days' then raise exception 'role locked for 30 days'; end if;
+  update profiles set life_role = p_role, life_role_set_at = _clock() where id = v_uid;
 end $$;
 
 create function public.set_place(p_kind text, p_lat double precision, p_lng double precision)
@@ -279,6 +313,8 @@ end $$;
 
 revoke execute on function public._clock(), public._bkk_now_time(), public._bkk_day(), public._has_parent(uuid),
   public._habit_block(uuid, public.habit_templates), public._habit_exp_today(uuid) from public, anon, authenticated;
+revoke execute on function public.set_life_role(text) from public, anon;
+grant execute on function public.set_life_role(text) to authenticated;
 revoke execute on function public.my_habits(), public.set_place(text, double precision, double precision),
   public.log_habit(text, double precision, double precision, text), public.family_pending_habits(), public.verify_habit(bigint, boolean)
   from public, anon;
