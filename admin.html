@@ -146,7 +146,6 @@ tr.sel td{background:var(--parchment-200)}
     { id: 'users', label: 'ผู้ใช้และการแบน', need: ['u.view', 'view'] },
     { id: 'careers', label: 'เลื่อนขั้นอาชีพ', need: ['c.review', 'view'] },
     { id: 'topups', label: 'ยืนยันเติมเงิน', need: ['m.topup', 'view'] },
-    { id: 'withdrawals', label: 'อนุมัติถอนเงิน', need: ['m.withdraw', 'view'] },
     { id: 'shop', label: 'ร้านค้า Crystal', need: ['m.shop', 'view'] },
     { id: 'guilds', label: 'กิลด์และกองทุน', need: ['g.fund', 'view'] },
     { id: 'settings', label: 'ตั้งค่าเศรษฐกิจ', need: ['m.rate', 'view'] },
@@ -196,7 +195,7 @@ tr.sel td{background:var(--parchment-200)}
     const head = (q) => q.then((r) => r.count || 0);
     if (can('q.review', 'view')) c.quests = await head(sb.from('quests').select('id', { count: 'exact', head: true }).eq('moderation', 'pending').neq('status', 'suspended'));
     if (can('q.reports', 'view')) c.reports = await head(sb.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'open'));
-    if (can('m.withdraw', 'view')) c.withdrawals = await head(sb.from('withdrawals').select('id', { count: 'exact', head: true }).in('status', ['pending', 'second_approval']));
+    if (false) c.withdrawals = await head(sb.from('withdrawals').select('id', { count: 'exact', head: true }).in('status', ['pending', 'second_approval']));
     if (can('u.kyc', 'view')) c.kyc = await head(sb.from('kyc_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'));
     if (can('q.dispute', 'view')) c.disputes = await head(sb.from('disputes').select('id', { count: 'exact', head: true }).eq('status', 'open'));
     if (can('c.review', 'view')) c.careers = (await head(sb.from('promotion_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'))) + (await head(sb.from('career_imports').select('id', { count: 'exact', head: true }).eq('status', 'pending')));
@@ -355,10 +354,11 @@ tr.sel td{background:var(--parchment-200)}
       promptpay_name: ['ชื่อบัญชีพร้อมเพย์', 'แสดงให้ผู้ใช้ตรวจก่อนโอน'], topup_min_thb: ['เติมขั้นต่ำ (บาท)', ''], crystal_daily_transfer_max: ['ส่ง Crystal สูงสุดต่อวัน (C)', ''],
       personal_exp_cap: ['EXP เป้าหมายส่วนตัวสูงสุดต่อวัน', ''], platform_fee_pct: ['ค่าธรรมเนียมแพลตฟอร์ม (%)', '0–30 หักจากรางวัลตอนจ่าย'], auto_release_hours: ['จ่ายอัตโนมัติหลังส่งงาน (ชม.)', '12–336'],
       checkin_radius_m: ['รัศมีเช็กอินหน้างาน (เมตร)', '50–5000'], vapid_public_key: ['VAPID public key (แจ้งเตือน)', ''], push_function_url: ['URL ฟังก์ชันส่งแจ้งเตือน', ''],
-      gold_thb_rate: ['อัตรา Gold ต่อบาท', '1 G = ? บาท (เช่น 1)'], signup_bonus_gold: ['โบนัสสมัครใหม่ (G)', 'Gold ที่ผู้ใช้ใหม่ได้ทันที'],
+      gold_thb_rate: ['ราคาขาย Gold (บาทต่อ 1 G)', 'เช่น 1 — เว้นว่าง = ยังไม่เปิดขาย'], signup_bonus_gold: ['โบนัสสมัครใหม่ (G)', 'Gold ที่ผู้ใช้ใหม่ได้ทันที'],
       review_reward_threshold: ['เควสต์ต้องตรวจเมื่อรางวัลตั้งแต่ (G)', ''], withdraw_min_gold: ['ถอนขั้นต่ำ (G)', ''], withdraw_dual_threshold: ['ถอนตั้งแต่ยอดนี้ต้องอนุมัติ 2 คน (G)', ''] };
     const edit = can('m.rate');
-    $('content').innerHTML = `<div><h1 style="font-size:28px">ตั้งค่าเศรษฐกิจ</h1><p class="muted" style="margin:4px 0 0">Gold = เงินจริง ถอนได้ · Crystal = ขายโดยแพลตฟอร์ม ให้กันได้ ถอนไม่ได้ · เปิดเติมเงินเมื่อใส่อัตราและเลขพร้อมเพย์แล้ว</p></div>
+    data.splice(0, data.length, ...data.filter((r) => !r.key.startsWith('withdraw_')));
+    $('content').innerHTML = `<div><h1 style="font-size:28px">ตั้งค่าเศรษฐกิจ</h1><p class="muted" style="margin:4px 0 0">Gold และ Crystal ขายโดยแพลตฟอร์ม ถอนเป็นเงินไม่ได้ทั้งคู่ · Gold ใช้จ้างงาน · Crystal ให้กันได้ ใช้ในร้าน · เปิดเติมเงินเมื่อใส่อัตราและเลขพร้อมเพย์แล้ว</p></div>
       <div class="kpis">${(data || []).map((r) => `<form class="card" data-setting="${esc(r.key)}" style="display:flex;flex-direction:column;gap:8px">
         <label class="f">${esc((L[r.key] || [r.key])[0])}<input name="v" value="${esc(r.value)}" ${edit ? '' : 'readonly'} placeholder="${esc((L[r.key] || ['', ''])[1])}"></label>
         <span class="small muted">แก้ล่าสุด ${when(r.updated_at)}</span>${edit ? '<button class="btn sec" type="submit">บันทึก</button>' : ''}</form>`).join('')}</div>
@@ -516,7 +516,7 @@ tr.sel td{background:var(--parchment-200)}
     const slips = await Promise.all(data.map((o) => signed('private-docs', o.slip_path)));
     const edit = can('m.topup');
     const notified = data.filter((o) => o.status === 'notified');
-    $('content').innerHTML = `<div><h1 style="font-size:28px">ยืนยันเติมเงิน</h1><p class="muted" style="margin:4px 0 0">ตรวจยอดเข้าบัญชีพร้อมเพย์ ${esc(S.settings.promptpay_id || '(ยังไม่ตั้ง)')} ให้ตรงยอดและเวลาในสลิปก่อนกดเติม · Gold = เงินจริง ถอนได้ · Crystal ถอนไม่ได้</p></div>
+    $('content').innerHTML = `<div><h1 style="font-size:28px">ยืนยันเติมเงิน</h1><p class="muted" style="margin:4px 0 0">ตรวจยอดเข้าบัญชีพร้อมเพย์ ${esc(S.settings.promptpay_id || '(ยังไม่ตั้ง)')} ให้ตรงยอดและเวลาในสลิปก่อนกดเติม · Gold และ Crystal ถอนไม่ได้</p></div>
       <div class="kpis"><div class="card kpi"><div class="small muted">สลิปรอตรวจ</div><div class="v">${notified.length}</div><div class="small muted">รวม ${notified.reduce((a, o) => a + Number(o.amount_thb), 0).toLocaleString('th-TH')} บาท</div></div></div>
       ${data.length ? `<div class="tbl-wrap"><table style="min-width:760px"><thead><tr><th>ผู้ใช้</th><th>รายการ</th><th style="text-align:right">ยอดโอน</th><th>รหัส</th><th>สลิป</th><th></th></tr></thead><tbody>
       ${data.map((o, i) => `<tr><td><b>@${esc(o.p && o.p.username)}</b><br><span class="small muted">${when(o.created_at)}</span></td><td>${num(o.units)} ${o.currency === 'gold' ? 'Gold' : 'Crystal'}</td>

@@ -1,6 +1,6 @@
 -- Real-life Quest — money: buying Gold and Crystal with PromptPay (confirmed by finance),
 -- Crystal gifting, the Crystal shop, and identity-checked withdrawals.
---   Gold    = real money. Earned from work, bought to pay for work, withdrawable.
+--   Gold    = bought from the platform or earned from work; pays for work. Never withdrawn.
 --   Crystal = bought from the platform. Can be given to family or anyone, never withdrawn, spent in the shop.
 
 insert into public.app_settings (key, value) values
@@ -295,27 +295,17 @@ begin
   perform _audit('shop.save', 'shop_item', p_id, jsonb_build_object('price', p_price, 'active', p_active));
 end $$;
 
--- ---------- withdrawals now need a verified identity ----------
+-- ---------- no withdrawals ----------
+-- Gold and Crystal can never be cashed out (owner's decision, to stay clear of e-money / payment rules).
+-- Gold is spent inside the app only: hiring people, guild funds, family quests.
 create or replace function public.request_withdrawal(p_amount bigint, p_bank_label text)
 returns uuid
 language plpgsql
 security definer
 set search_path = public
 as $$
-declare
-  v_uid uuid := public._assert_verified();
-  v_min bigint := coalesce(nullif((select value from app_settings where key = 'withdraw_min_gold'), '')::bigint, 100);
-  v_id uuid;
 begin
-  if p_amount is null or p_amount < v_min then raise exception 'below minimum withdrawal'; end if;
-  update wallets set gold = gold - p_amount, gold_locked = gold_locked + p_amount, updated_at = now()
-   where user_id = v_uid and gold >= p_amount;
-  if not found then raise exception 'not enough gold'; end if;
-  insert into withdrawals (user_id, amount_gold, bank_label) values (v_uid, p_amount, p_bank_label)
-  returning id into v_id;
-  perform _ledger(v_uid, 'withdraw_hold', -p_amount, p_amount, null, v_id);
-  perform _notify_perm('m.withdraw', 'money', 'มีคำขอถอนเงินใหม่', p_amount || ' G', 'admin.html#withdrawals');
-  return v_id;
+  raise exception 'withdrawals are closed';
 end $$;
 
 -- ---------- row level security ----------

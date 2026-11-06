@@ -1,4 +1,4 @@
-// Buying Gold/Crystal via PromptPay orders, Crystal gifting, the shop, settings validation, KYC-gated withdrawals.
+// Buying Gold/Crystal via PromptPay orders, Crystal gifting, the shop, settings validation, no withdrawals.
 module.exports = async (t) => {
   const owner = await t.user('mn_owner', { staff: 'owner', kyc: true });
   const fin = await t.user('mn_finance', { staff: 'finance', kyc: true });
@@ -57,10 +57,11 @@ module.exports = async (t) => {
   await t.as(A); await t.q(`select buy_item('boost_personal_slots')`);
   t.eq(await t.one(`select extra_personal_slots from profiles where id = $1`, [A]), 2, 'boost adds personal slots');
 
-  // withdrawals need identity; crystal can never be withdrawn
-  await t.throws(`select request_withdrawal(200, 'กสิกร •••• 1234')`, 'identity not verified', 'withdraw needs KYC');
+  // nothing can be withdrawn, even with a verified identity
   await t.admin(); await t.q(`update profiles set kyc_status = 'verified' where id = $1`, [A]);
   await t.as(A);
-  await t.q(`select request_withdrawal(200, 'กสิกร •••• 1234')`);
-  t.eq(await t.one(`select gold_locked from wallets where user_id = $1`, [A]), 200, 'withdrawal held');
+  const g0 = await t.one(`select gold from wallets where user_id = $1`, [A]);
+  await t.throws(`select request_withdrawal(200, 'กสิกร •••• 1234')`, 'withdrawals are closed', 'gold cannot be withdrawn');
+  t.eq(await t.one(`select gold from wallets where user_id = $1`, [A]), g0, 'balance untouched');
+  t.eq(await t.one(`select count(*) from withdrawals where user_id = $1`, [A]), 0, 'no withdrawal created');
 };
