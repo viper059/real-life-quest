@@ -1,15 +1,15 @@
 /* Real-life Quest — planner: daily quests + streak chest, monthly quests + reward track, personal goals (family-verified for 2× EXP). */
 (() => {
-  const { sb, S, $, esc, num, toast, rpc, refresh, loaders, renderers } = App;
+  const { sb, S, $, esc, num, toast, rpc, refresh, loaders, renderers, geolocate, upload } = App;
   const PCAT = { health: 'สุขภาพ', study: 'เรียนรู้', money: 'การเงิน', home: 'บ้าน', discipline: 'วินัย', other: 'อื่น ๆ' };
   const REPEAT = { daily: 'ทุกวัน', weekly: 'ทุกสัปดาห์', monthly: 'ทุกเดือน' };
   const DIFF = { 1: 'ง่าย', 2: 'กลาง', 3: 'ยาก' };
 
   loaders.planner = async function () {
     if (S.qsub !== 'plan') return;
-    const [d, m] = await Promise.all([sb.rpc('my_planner_day'), sb.rpc('my_planner_month')]);
+    const [d, m, h] = await Promise.all([sb.rpc('my_planner_day'), sb.rpc('my_planner_month'), sb.rpc('my_habits')]);
     if (d.error) throw d.error;
-    S.day = d.data; S.month = m.data;
+    S.day = d.data; S.month = m.data; S.habits = h.data;
   };
   App.loadPlanner = () => refresh(['planner']);
 
@@ -79,17 +79,75 @@
     </div>`;
   }
 
+
+  /* ---------- everyday-life habits (กิจวัตร) ---------- */
+  const HGRP = [['body', 'ร่างกาย'], ['food', 'อาหาร'], ['health', 'สุขภาพ'], ['home', 'งานบ้าน'], ['mind', 'ใจและวินัย'], ['student', 'นักเรียน'], ['worker', 'คนทำงาน']];
+  const PLACE = { home: 'บ้าน', school: 'โรงเรียน', work: 'ที่ทำงาน' };
+  const hm = (iso) => new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
+  function blockText(h) {
+    switch (h.block) {
+      case 'done for today': return h.pending ? 'รอผู้ปกครองรับรอง' : 'ครบวันนี้แล้ว';
+      case 'too soon': return 'ทำได้อีกครั้ง ' + hm(h.next_at);
+      case 'outside time window': return `ทำได้ช่วง ${h.from}–${h.to}`;
+      case 'weekdays only': return 'เฉพาะวันจันทร์–ศุกร์';
+      case 'do the earlier step first': return 'ต้องเช็กอินไปเรียน/ทำงานก่อน';
+      case 'set your place first': return `ตั้งตำแหน่ง${PLACE[h.place]}ก่อน`;
+      default: return h.block || '';
+    }
+  }
+  function habitsView(H) {
+    const pct = Math.min(100, Math.round(H.exp_today / H.cap * 100)), full = H.exp_today >= H.cap;
+    const f = S.habitGrp || 'all';
+    const groups = HGRP.filter(([g]) => f === 'all' || f === g);
+    const needPlace = ['school', 'work', 'home'];
+    return `<div class="stack">
+      <div class="card wood stack">
+        <div class="row between"><b style="font-family:var(--font-display);font-size:17px">กิจวัตรวันนี้</b><span class="small" style="color:var(--on-wood-muted)">ตอนนี้ ${esc(H.now)} น.</span></div>
+        <div class="row between small" style="color:var(--on-wood-muted)"><span>EXP จากกิจวัตร</span><span>${H.exp_today} / ${H.cap}</span></div>
+        <div class="bar dark"><div style="width:${pct}%;background:${full ? 'var(--crystal)' : 'var(--exp)'}"></div></div>
+        <span class="small" style="color:var(--on-wood-muted)">${full ? 'ครบเพดานวันนี้แล้ว — ทำต่อได้เพื่อสุขภาพ แต่ไม่ได้ EXP เพิ่ม' : 'แต่ละอย่างได้ EXP ไม่เท่ากัน มีจำนวนครั้งต่อวัน ระยะห่าง และช่วงเวลา กันกดรัว'}</span>
+      </div>
+      <div class="row scroll-x">${[['all', 'ทั้งหมด'], ...HGRP].map(([k, v]) => `<button class="pill" data-hgrp="${k}" aria-pressed="${f === k}">${v}</button>`).join('')}</div>
+      ${(f === 'all' || f === 'student' || f === 'worker') ? `<div class="card stack"><b>ตำแหน่งสำหรับเช็กอิน</b>
+        <span class="small muted">ตั้งตอนอยู่ที่นั่นจริง · ตั้งแล้วเปลี่ยนได้อีกครั้งหลัง 30 วัน · เห็นเฉพาะคุณ</span>
+        <div class="row">${needPlace.map((k) => { const p = H.places[k]; const locked = p && new Date(p.locked_until) > Date.now();
+          return `<button class="btn ${p ? 'sec' : 'action'} sm" data-hplace="${k}" ${locked ? 'disabled' : ''}>${p ? '✓ ' : ''}${PLACE[k]}${locked ? ' · ล็อกถึง ' + new Date(p.locked_until).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : p ? ' · ตั้งใหม่' : ' · ตั้งที่นี่'}</button>`; }).join('')}</div></div>` : ''}
+      ${groups.map(([g, label]) => { const list = H.habits.filter((h) => h.grp === g); if (!list.length) return '';
+        return `<div class="card stack" style="gap:2px"><h2 style="font-size:16px">${label}</h2>${list.map((h) => {
+          const can = !h.block, proof = h.verify === 'photo' || (h.verify === 'parent' && !H.has_parent);
+          return `<div class="tx">
+            <span aria-hidden="true" style="font-size:24px;width:36px;text-align:center;flex:none">${h.icon}</span>
+            <div style="flex:1;min-width:0"><div>${esc(h.title)} <span class="gold" style="font-size:13px">+${h.exp}</span></div>
+              <div class="small muted">${h.count}/${h.max} วันนี้${h.verify === 'location' ? ' · เช็กอินที่' + PLACE[h.place] : ''}${proof ? ' · แนบรูป' : ''}${h.verify === 'parent' && H.has_parent ? ' · ผู้ปกครองรับรอง' : ''}${can ? '' : ' · <span style="color:var(--danger-ink)">' + esc(blockText(h)) + '</span>'}</div>
+              ${h.hint ? `<div class="small muted">${esc(h.hint)}</div>` : ''}</div>
+            ${proof && can ? `<label class="btn action sm" style="cursor:pointer">📷 ทำแล้ว<input type="file" accept="image/*" capture="environment" data-hphoto="${h.id}" hidden></label>`
+              : `<button class="btn ${can ? 'action' : 'sec'} sm" data-p="habit" data-id="${h.id}" data-loc="${h.verify === 'location' ? 1 : 0}" ${can ? '' : 'disabled'}>${h.count >= h.max ? '✓' : 'ทำแล้ว'}</button>`}
+          </div>`; }).join('')}</div>`; }).join('')}
+    </div>`;
+  }
+  const habitMsg = (x) => x.status === 'pending' ? 'บันทึกแล้ว รอผู้ปกครองรับรอง' : x.exp ? `+${x.exp} EXP${x.capped ? ' (ถึงเพดานวันนี้)' : ''}` : 'บันทึกแล้ว (ครบเพดาน EXP วันนี้)';
+
   function renderPlan() {
     const el = $('qsub-plan');
     if (S.qsub !== 'plan') return;
     if (!S.day) { el.innerHTML = '<div class="empty" style="margin-top:14px">กำลังโหลดแผน…</div>'; return; }
-    el.innerHTML = `<div class="row" style="margin:14px 0 12px">${[['day', 'วันนี้'], ['month', 'เดือนนี้'], ['personal', 'ส่วนตัว']].map(([k, v]) => `<button class="pill" data-psub="${k}" aria-pressed="${S.psub === k}">${v}</button>`).join('')}</div>
-      ${S.psub === 'day' ? dayView(S.day) : S.psub === 'month' ? (S.month ? monthView(S.month) : '') : personalView(S.day)}`;
+    el.innerHTML = `<div class="row" style="margin:14px 0 12px">${[['day', 'วันนี้'], ['habit', 'กิจวัตร'], ['month', 'เดือนนี้'], ['personal', 'ส่วนตัว']].map(([k, v]) => `<button class="pill" data-psub="${k}" aria-pressed="${S.psub === k}">${v}</button>`).join('')}</div>
+      ${S.psub === 'day' ? dayView(S.day) : S.psub === 'habit' ? (S.habits ? habitsView(S.habits) : '') : S.psub === 'month' ? (S.month ? monthView(S.month) : '') : personalView(S.day)}`;
   }
   renderers.push(renderPlan);
 
   $('qsub-plan').addEventListener('click', async (ev) => {
     const s = ev.target.closest('[data-psub]'); if (s) { S.psub = s.dataset.psub; return renderPlan(); }
+    const g = ev.target.closest('[data-hgrp]'); if (g) { S.habitGrp = g.dataset.hgrp; return renderPlan(); }
+    const pl = ev.target.closest('[data-hplace]');
+    if (pl) {
+      const k = pl.dataset.hplace, name = { home: 'บ้าน', school: 'โรงเรียน', work: 'ที่ทำงาน' }[k];
+      if (!confirm(`ตั้งตำแหน่งตอนนี้เป็น${name}? เปลี่ยนได้อีกครั้งหลัง 30 วัน`)) return;
+      pl.disabled = true;
+      try { const p = await geolocate(); await rpc('set_place', { p_kind: k, p_lat: p.lat, p_lng: p.lng }, `บันทึกตำแหน่ง${name}แล้ว`); }
+      catch (e) { toast(App.errText(e), true); pl.disabled = false; }
+      return;
+    }
     const b = ev.target.closest('button[data-p]'); if (!b) return;
     b.disabled = true; const id = b.dataset.id;
     switch (b.dataset.p) {
@@ -98,8 +156,19 @@
       case 'monthly': await rpc('claim_monthly', { p_template: id }, (x) => `+${x} EXP`); break;
       case 'track': await rpc('claim_monthly_track', { p_step: Number(b.dataset.step) }, (x) => 'ได้รับ ' + (x || 'รางวัล')); break;
       case 'log': await rpc('log_personal', { p_pq: id, p_amount: 1 }, (x) => x && x.done ? (x.verify_status === 'pending' ? 'สำเร็จ! รอผู้ปกครองรับรอง' : `สำเร็จ! +${x.exp} EXP`) : 'บันทึกแล้ว'); break;
+      case 'habit': {
+        let p = { lat: null, lng: null };
+        if (b.dataset.loc === '1') { try { toast('กำลังหาตำแหน่ง…'); p = await geolocate(); } catch (e) { toast(e.message, true); b.disabled = false; break; } }
+        await rpc('log_habit', { p_habit: id, p_lat: p.lat, p_lng: p.lng, p_photo: null }, habitMsg); break;
+      }
       case 'archive': if (confirm('เลิกเป้าหมายนี้? ช่องจะว่างให้เพิ่มเป้าหมายใหม่')) await rpc('archive_personal_quest', { p_id: id }, 'เลิกแล้ว'); else b.disabled = false; break;
     }
+  });
+  $('qsub-plan').addEventListener('change', async (ev) => {
+    const inp = ev.target.closest('[data-hphoto]'); if (!inp || !inp.files[0]) return;
+    try { toast('กำลังอัปโหลดรูป…'); const path = await upload('private-docs', S.user.id, inp.files[0], 'habit-' + inp.dataset.hphoto);
+      await rpc('log_habit', { p_habit: inp.dataset.hphoto, p_lat: null, p_lng: null, p_photo: path }, habitMsg); }
+    catch (e) { toast(App.errText(e), true); }
   });
   $('qsub-plan').addEventListener('submit', async (ev) => {
     ev.preventDefault(); const f = ev.target; if (f.id !== 'pqForm') return;

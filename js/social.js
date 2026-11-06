@@ -28,13 +28,14 @@
     const { data: me } = await sb.from('family_members').select('family_id, role').eq('user_id', uid).is('left_at', null).maybeSingle();
     S.family = null; S.famRole = null; S.famMembers = []; S.famQuests = []; S.famPending = [];
     if (!me) return;
-    const [f, mem, q, pend] = await Promise.all([
+    const [f, mem, q, pend, ph] = await Promise.all([
       sb.from('families').select('*').eq('id', me.family_id).single(),
       sb.from('family_members').select('user_id, role, p:profiles!family_members_user_id_fkey(username,display_name,base_level)').eq('family_id', me.family_id).is('left_at', null),
       sb.from('quests').select(App.QSEL).eq('family_id', me.family_id).in('status', ['open', 'in_progress', 'submitted']).order('created_at', { ascending: false }),
-      me.role === 'parent' ? sb.rpc('family_pending_verifications') : Promise.resolve({ data: [] })
+      me.role === 'parent' ? sb.rpc('family_pending_verifications') : Promise.resolve({ data: [] }),
+      me.role === 'parent' ? sb.rpc('family_pending_habits') : Promise.resolve({ data: [] })
     ]);
-    S.family = f.data; S.famRole = me.role; S.famMembers = mem.data || []; S.famQuests = q.data || []; S.famPending = pend.data || [];
+    S.family = f.data; S.famRole = me.role; S.famMembers = mem.data || []; S.famQuests = q.data || []; S.famPending = pend.data || []; S.famHabits = ph.data || [];
   };
 
   function health(g) {
@@ -115,8 +116,10 @@
         <label class="f">รายละเอียด<input name="d" maxlength="2000"></label>
         <label class="f">รางวัล (G) — ล็อกจากกระเป๋าคุณ<input name="g" type="number" min="1" step="1" required inputmode="numeric"></label>
         <button class="btn primary" type="submit">มอบเควสต์</button></form>` : ''}
-      ${parent ? `<div class="card stack" style="gap:4px"><h3 style="font-size:15px">รอคุณรับรอง (${S.famPending.length})</h3>
-        ${S.famPending.length ? S.famPending.map((v) => `<div class="tx"><div style="flex:1;min-width:0"><b style="font-weight:600">${esc(v.user)}</b> · ${esc(v.title)}<div class="small muted">${ago(v.done_at)} · ได้ ${v.exp} EXP ถ้ารับรอง</div></div>
+      ${parent ? `<div class="card stack" style="gap:4px"><h3 style="font-size:15px">รอคุณรับรอง (${S.famPending.length + (S.famHabits || []).length})</h3>
+        ${(S.famHabits || []).map((v) => `<div class="tx"><span aria-hidden="true" style="font-size:20px">${v.icon}</span><div style="flex:1;min-width:0"><b style="font-weight:600">${esc(v.user)}</b> · ${esc(v.title)}<div class="small muted">${ago(v.logged_at)} · กิจวัตร +${v.exp} EXP</div></div>
+          <button class="btn action sm" data-hverify="${v.id}" data-ok="1">รับรอง</button><button class="btn sec sm" data-hverify="${v.id}" data-ok="0">ไม่ใช่</button></div>`).join('')}
+        ${S.famPending.length || (S.famHabits || []).length ? S.famPending.map((v) => `<div class="tx"><div style="flex:1;min-width:0"><b style="font-weight:600">${esc(v.user)}</b> · ${esc(v.title)}<div class="small muted">${ago(v.done_at)} · ได้ ${v.exp} EXP ถ้ารับรอง</div></div>
           <button class="btn action sm" data-verify="${v.pq_id}" data-period="${esc(v.period)}">รับรอง</button></div>`).join('') : '<span class="small muted">ยังไม่มีเป้าหมายที่รอรับรอง</span>'}</div>` : ''}
     </div>
     <h3 style="font-size:15px;margin:14px 0 8px">เควสต์ในบ้าน</h3>
@@ -149,5 +152,6 @@
     if (b.id === 'famLeave' && confirm('ออกจากบ้านนี้?')) await rpc('leave_family', {}, 'ออกจากบ้านแล้ว');
     if (b.dataset.verify) { b.disabled = true; await rpc('verify_personal', { p_pq: b.dataset.verify, p_period: b.dataset.period }, 'รับรองแล้ว ลูกได้ EXP 2 เท่า'); }
     if (b.dataset.gift) App.openSendCrystal(b.dataset.gift);
+    if (b.dataset.hverify) { b.disabled = true; await rpc('verify_habit', { p_log: Number(b.dataset.hverify), p_approve: b.dataset.ok === '1' }, b.dataset.ok === '1' ? 'รับรองแล้ว' : 'แจ้งลูกแล้ว'); }
   });
 })();
