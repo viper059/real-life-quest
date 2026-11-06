@@ -125,11 +125,14 @@ tr.sel td{background:var(--parchment-200)}
   const ERR = [['forbidden', 'บทบาทของคุณไม่มีสิทธิ์ทำสิ่งนี้'], ['second approval must come', 'ผู้อนุมัติคนที่ 2 ต้องเป็นคนละคนกับคนแรก'],
     ['cannot decide your own', 'อนุมัติคำขอของตัวเองไม่ได้'], ['owner permissions are locked', 'สิทธิ์ของเจ้าของระบบแก้ไม่ได้'],
     ['cannot remove the last owner', 'ต้องมีเจ้าของระบบอย่างน้อย 1 คน'], ['withdrawal not open', 'คำขอนี้ถูกตัดสินไปแล้ว'],
-    ['bad rate', 'อัตราต้องเป็นตัวเลข เช่น 0.25'], ['fund too low', 'เงินในกองทุนไม่พอจ่าย'], ['claim not approved', 'เคลมนี้ถูกตัดสินไปแล้ว'], ['must be a whole number', 'ต้องเป็นจำนวนเต็ม'], ['Invalid login credentials', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง']];
+    ['bad rate', 'อัตราต้องเป็นตัวเลข เช่น 0.25'], ['fund too low', 'เงินในกองทุนไม่พอจ่าย'], ['claim not approved', 'เคลมนี้ถูกตัดสินไปแล้ว'], ['must be a whole number', 'ต้องเป็นจำนวนเต็ม'], ['cannot review your own', 'ตรวจคำขอของตัวเองไม่ได้'], ['cannot judge your own', 'ตัดสินงานที่ตัวเองเกี่ยวข้องไม่ได้'], ['not pending', 'รายการนี้ถูกตัดสินไปแล้ว'], ['dispute not open', 'ข้อพิพาทนี้ปิดแล้ว'], ['percent must be', 'เปอร์เซ็นต์ต้องอยู่ระหว่าง 0–100'], ['rank changed since request', 'ขั้นของผู้ใช้เปลี่ยนไปแล้ว'], ['bad promptpay', 'เลขพร้อมเพย์ต้องเป็น 10 หรือ 13 หลัก'], ['out of range', 'ค่าอยู่นอกช่วงที่อนุญาต'], ['Invalid login credentials', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง']];
   const errText = (e) => { const m = (e && e.message) || String(e); const h = ERR.find(([k]) => m.includes(k)); return h ? h[1] : m; };
   let tt; function toast(m, bad) { const t = $('toast'); t.textContent = m; t.classList.toggle('err', !!bad); t.classList.remove('hidden'); clearTimeout(tt); tt = setTimeout(() => t.classList.add('hidden'), 3400); }
 
-  const CATS = { general: 'ทั่วไป', home: 'งานบ้าน', delivery: 'ส่งของ', tutor: 'สอนพิเศษ', repair: 'งานช่าง', family: 'ครอบครัว' };
+  const CATS = { general: 'ทั่วไป', home: 'งานบ้าน', delivery: 'ส่งของ', tutor: 'สอนพิเศษ', repair: 'งานช่าง', electric: 'ช่างไฟฟ้า', family: 'ครอบครัว' };
+  const OCC = { home: 'งานบ้าน', delivery: 'ส่งของ', tutor: 'สอนพิเศษ', repair: 'งานช่าง', electric: 'ช่างไฟฟ้า' };
+  const signed = async (bucket, path) => { if (!path) return null; const { data } = await sb.storage.from(bucket).createSignedUrl(path, 900); return data ? data.signedUrl : null; };
+  const link = (url, label) => url ? `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn sec" style="display:inline-flex;align-items:center;text-decoration:none;min-height:34px">${label}</a>` : '<span class="small muted">ไม่มีไฟล์</span>';
   const WST = { pending: 'รออนุมัติ', second_approval: 'รอคนที่ 2', paid: 'โอนแล้ว', rejected: 'ปฏิเสธแล้ว' };
   const S = { user: null, role: null, roleLabel: '', perms: {}, page: 'overview', settings: {}, qTab: 'pending', selQuest: null };
   const can = (p, min = 'full') => S.perms[p] === 'full' || (min === 'view' && S.perms[p] === 'view');
@@ -138,9 +141,15 @@ tr.sel td{background:var(--parchment-200)}
     { id: 'overview', label: 'ภาพรวม', need: null },
     { id: 'quests', label: 'ตรวจเควสต์', need: ['q.review', 'view'] },
     { id: 'reports', label: 'รายงาน', need: ['q.reports', 'view'] },
+    { id: 'kyc', label: 'ยืนยันตัวตน', need: ['u.kyc', 'view'] },
+    { id: 'disputes', label: 'ข้อพิพาท', need: ['q.dispute', 'view'] },
+    { id: 'users', label: 'ผู้ใช้และการแบน', need: ['u.view', 'view'] },
+    { id: 'careers', label: 'เลื่อนขั้นอาชีพ', need: ['c.review', 'view'] },
+    { id: 'topups', label: 'ยืนยันเติมเงิน', need: ['m.topup', 'view'] },
     { id: 'withdrawals', label: 'อนุมัติถอนเงิน', need: ['m.withdraw', 'view'] },
+    { id: 'shop', label: 'ร้านค้า Crystal', need: ['m.shop', 'view'] },
     { id: 'guilds', label: 'กิลด์และกองทุน', need: ['g.fund', 'view'] },
-    { id: 'settings', label: 'เศรษฐกิจ · อัตรา Gold', need: ['m.rate', 'view'] },
+    { id: 'settings', label: 'ตั้งค่าเศรษฐกิจ', need: ['m.rate', 'view'] },
     { id: 'staff', label: 'ทีมงาน', need: ['s.roles', 'view'] },
     { id: 'roles', label: 'บทบาทและสิทธิ์', need: ['s.roles', 'view'] },
     { id: 'audit', label: 'บันทึกการตรวจสอบ', need: ['s.audit', 'view'] }
@@ -166,7 +175,7 @@ tr.sel td{background:var(--parchment-200)}
     S.settings = Object.fromEntries((st || []).map((r) => [r.key, r.value]));
     $('roleBadge').textContent = S.roleLabel;
     $('meName').textContent = me.profile ? (me.profile.display_name || '@' + me.profile.username) : '';
-    show('app'); go('overview');
+    show('app'); const h = location.hash.slice(1); go(PAGES.some((p) => p.id === h && allowed(p)) ? h : 'overview');
   }
   function show(which) { ['auth', 'denied', 'app'].forEach((v) => $(v + 'View').classList.toggle('hidden', v !== which)); }
   sb.auth.onAuthStateChange((_e, session) => {
@@ -188,6 +197,10 @@ tr.sel td{background:var(--parchment-200)}
     if (can('q.review', 'view')) c.quests = await head(sb.from('quests').select('id', { count: 'exact', head: true }).eq('moderation', 'pending').neq('status', 'suspended'));
     if (can('q.reports', 'view')) c.reports = await head(sb.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'open'));
     if (can('m.withdraw', 'view')) c.withdrawals = await head(sb.from('withdrawals').select('id', { count: 'exact', head: true }).in('status', ['pending', 'second_approval']));
+    if (can('u.kyc', 'view')) c.kyc = await head(sb.from('kyc_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'));
+    if (can('q.dispute', 'view')) c.disputes = await head(sb.from('disputes').select('id', { count: 'exact', head: true }).eq('status', 'open'));
+    if (can('c.review', 'view')) c.careers = (await head(sb.from('promotion_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'))) + (await head(sb.from('career_imports').select('id', { count: 'exact', head: true }).eq('status', 'pending')));
+    if (can('m.topup', 'view')) c.topups = await head(sb.from('topup_orders').select('id', { count: 'exact', head: true }).eq('status', 'notified'));
     if (can('g.fund', 'view')) c.guilds = await head(sb.from('guild_claims').select('id', { count: 'exact', head: true }).eq('status', 'approved'));
     return c;
   }
@@ -206,6 +219,7 @@ tr.sel td{background:var(--parchment-200)}
     try { await VIEWS[page](); } catch (e) { $('content').innerHTML = `<div class="empty">${esc(errText(e))}</div>`; }
   }
   const reload = () => go(S.page);
+  window.addEventListener('hashchange', () => { const h = location.hash.slice(1); const pg = PAGES.find((p) => p.id === h); if (pg && allowed(pg) && S.user) go(h); });
 
   /* ---------- Views ---------- */
   const VIEWS = {};
@@ -217,10 +231,16 @@ tr.sel td{background:var(--parchment-200)}
     if ('reports' in c) cards.push(['รายงานที่ยังเปิด', c.reports, 'reports']);
     if ('withdrawals' in c) cards.push(['คำขอถอนรอตัดสิน', c.withdrawals, 'withdrawals']);
     if ('guilds' in c) cards.push(['เคลมกองทุนรอจ่าย', c.guilds, 'guilds']);
+    if ('kyc' in c) cards.push(['รอยืนยันตัวตน', c.kyc, 'kyc']);
+    if ('disputes' in c) cards.push(['ข้อพิพาทที่เปิดอยู่', c.disputes, 'disputes']);
+    if ('careers' in c) cards.push(['คำขออาชีพรอตรวจ', c.careers, 'careers']);
+    if ('topups' in c) cards.push(['สลิปเติมเงินรอตรวจ', c.topups, 'topups']);
     if (can('m.ledger', 'view')) {
       const { data } = await sb.from('wallets').select('gold, gold_locked');
       const tot = (data || []).reduce((a, w) => a + Number(w.gold) + Number(w.gold_locked), 0);
       cards.push(['Gold ทั้งระบบ', num(tot), null]);
+      const { data: cw } = await sb.from('wallets').select('crystal');
+      cards.push(['Crystal ทั้งระบบ', num((cw || []).reduce((a, w) => a + Number(w.crystal), 0)), null]);
     }
     const { count: users } = await sb.from('profiles').select('id', { count: 'exact', head: true });
     cards.push(['ผู้ใช้ทั้งหมด', num(users), null]);
@@ -331,10 +351,14 @@ tr.sel td{background:var(--parchment-200)}
   VIEWS.settings = async () => {
     const { data } = await sb.from('app_settings').select('key,value,updated_at').order('key');
     S.settings = Object.fromEntries((data || []).map((r) => [r.key, r.value]));
-    const L = { gold_thb_rate: ['อัตรา Gold ต่อบาท', '1 G = ? บาท (เช่น 0.25)'], signup_bonus_gold: ['โบนัสสมัครใหม่ (G)', 'Gold ที่ผู้ใช้ใหม่ได้ทันที'],
+    const L = { crystal_thb_rate: ['ราคา Crystal (บาทต่อ 1 C)', 'เช่น 0.5 — เว้นว่าง = ยังไม่เปิดขาย'], promptpay_id: ['เลขพร้อมเพย์รับเงิน', 'เบอร์ 10 หลัก หรือเลขผู้เสียภาษี 13 หลัก'],
+      promptpay_name: ['ชื่อบัญชีพร้อมเพย์', 'แสดงให้ผู้ใช้ตรวจก่อนโอน'], topup_min_thb: ['เติมขั้นต่ำ (บาท)', ''], crystal_daily_transfer_max: ['ส่ง Crystal สูงสุดต่อวัน (C)', ''],
+      personal_exp_cap: ['EXP เป้าหมายส่วนตัวสูงสุดต่อวัน', ''], platform_fee_pct: ['ค่าธรรมเนียมแพลตฟอร์ม (%)', '0–30 หักจากรางวัลตอนจ่าย'], auto_release_hours: ['จ่ายอัตโนมัติหลังส่งงาน (ชม.)', '12–336'],
+      checkin_radius_m: ['รัศมีเช็กอินหน้างาน (เมตร)', '50–5000'], vapid_public_key: ['VAPID public key (แจ้งเตือน)', ''], push_function_url: ['URL ฟังก์ชันส่งแจ้งเตือน', ''],
+      gold_thb_rate: ['อัตรา Gold ต่อบาท', '1 G = ? บาท (เช่น 1)'], signup_bonus_gold: ['โบนัสสมัครใหม่ (G)', 'Gold ที่ผู้ใช้ใหม่ได้ทันที'],
       review_reward_threshold: ['เควสต์ต้องตรวจเมื่อรางวัลตั้งแต่ (G)', ''], withdraw_min_gold: ['ถอนขั้นต่ำ (G)', ''], withdraw_dual_threshold: ['ถอนตั้งแต่ยอดนี้ต้องอนุมัติ 2 คน (G)', ''] };
     const edit = can('m.rate');
-    $('content').innerHTML = `<h1 style="font-size:28px">เศรษฐกิจ · อัตรา Gold</h1>
+    $('content').innerHTML = `<div><h1 style="font-size:28px">ตั้งค่าเศรษฐกิจ</h1><p class="muted" style="margin:4px 0 0">Gold = เงินจริง ถอนได้ · Crystal = ขายโดยแพลตฟอร์ม ให้กันได้ ถอนไม่ได้ · เปิดเติมเงินเมื่อใส่อัตราและเลขพร้อมเพย์แล้ว</p></div>
       <div class="kpis">${(data || []).map((r) => `<form class="card" data-setting="${esc(r.key)}" style="display:flex;flex-direction:column;gap:8px">
         <label class="f">${esc((L[r.key] || [r.key])[0])}<input name="v" value="${esc(r.value)}" ${edit ? '' : 'readonly'} placeholder="${esc((L[r.key] || ['', ''])[1])}"></label>
         <span class="small muted">แก้ล่าสุด ${when(r.updated_at)}</span>${edit ? '<button class="btn sec" type="submit">บันทึก</button>' : ''}</form>`).join('')}</div>
@@ -391,12 +415,170 @@ tr.sel td{background:var(--parchment-200)}
       </tbody></table></div>` : '<div class="empty">ยังไม่มีบันทึก</div>'}`;
   };
 
+
+  VIEWS.kyc = async () => {
+    const { data, error } = await sb.from('kyc_requests').select('*, p:profiles!kyc_requests_user_id_fkey(username,created_at,quests_done)').eq('status', 'pending').order('created_at').limit(30);
+    if (error) throw error;
+    const urls = await Promise.all(data.map(async (r) => [await signed('private-docs', r.id_card_path), await signed('private-docs', r.selfie_path)]));
+    const edit = can('u.kyc');
+    $('content').innerHTML = `<div><h1 style="font-size:28px">ยืนยันตัวตน</h1><p class="muted" style="margin:4px 0 0">เทียบชื่อกับบัตร หน้ากับเซลฟี และบัตรต้องไม่หมดอายุ · ลิงก์รูปหมดอายุใน 15 นาที · ห้ามบันทึกหรือส่งต่อรูป</p></div>
+      ${data.length ? data.map((r, i) => `<div class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div class="row between"><div><b style="font-size:16px">${esc(r.legal_name)}</b> <span class="small muted">@${esc(r.p && r.p.username)} · โทร ${esc(r.phone)} · บัญชี ${r.p ? ageDays(r.p.created_at) : '?'} วัน</span></div><span class="small muted">ส่งเมื่อ ${when(r.created_at)}</span></div>
+        <div class="row">${urls[i][0] ? `<a href="${esc(urls[i][0])}" target="_blank" rel="noopener"><img src="${esc(urls[i][0])}" alt="บัตรประชาชนของ ${esc(r.legal_name)}" style="height:160px;border-radius:10px;border:1.5px solid var(--brass-500)"></a>` : ''}
+          ${urls[i][1] ? `<a href="${esc(urls[i][1])}" target="_blank" rel="noopener"><img src="${esc(urls[i][1])}" alt="เซลฟีถือบัตรของ ${esc(r.legal_name)}" style="height:160px;border-radius:10px;border:1.5px solid var(--brass-500)"></a>` : ''}</div>
+        ${edit ? `<div class="row" style="align-items:flex-end"><label class="f" style="flex:1 1 240px">เหตุผล (ต้องใส่เมื่อไม่ผ่าน)<input id="kn-${r.id}" maxlength="300" placeholder="เช่น รูปบัตรไม่ชัด ชื่อไม่ตรง"></label>
+          <button class="btn action" data-kyc="${r.id}" data-ok="1">ผ่าน</button><button class="btn danger" data-kyc="${r.id}" data-ok="0">ไม่ผ่าน</button></div>` : ''}</div>`).join('')
+        : '<div class="empty">ไม่มีคำขอรอตรวจ</div>'}`;
+  };
+
+  VIEWS.disputes = async () => {
+    const { data, error } = await sb.from('disputes').select('*, quest:quests(id,title,reward_gold,status,poster_id,worker_id,est_minutes,remote,poster:profiles!quests_poster_id_fkey(username),worker:profiles!quests_worker_id_fkey(username))').eq('status', 'open').order('created_at');
+    if (error) throw error;
+    const sel = data.find((d) => d.id === S.selDispute) || data[0]; S.selDispute = sel ? sel.id : null;
+    let detail = '';
+    if (sel) {
+      const q = sel.quest, edit = can('q.dispute'), involved = q && (q.poster_id === S.user.id || q.worker_id === S.user.id);
+      const [{ data: ses }, { data: msgs }] = await Promise.all([
+        sb.from('work_sessions').select('*').eq('quest_id', q.id).order('started_at'),
+        sb.from('messages').select('*').eq('quest_id', q.id).order('created_at').limit(200)]);
+      const ev = await Promise.all((sel.evidence || []).map((p) => signed('quest-media', p)));
+      const photos = await Promise.all((ses || []).flatMap((x) => [x.start_photo, x.end_photo]).filter(Boolean).map((p) => signed('quest-media', p)));
+      const mins = (ses || []).reduce((a, x) => a + (x.minutes || 0), 0);
+      const nm = (id) => id === q.poster_id ? 'ผู้โพสต์ @' + (q.poster && q.poster.username) : id === q.worker_id ? 'ผู้รับงาน @' + (q.worker && q.worker.username) : 'ทีมงาน';
+      detail = `<aside class="aside card" style="border:2px solid var(--wood-800);display:flex;flex-direction:column;gap:10px">
+        <h2 style="font-size:18px">${esc(q.title)}</h2>
+        <span class="small">ผู้โพสต์ @${esc(q.poster && q.poster.username)} · ผู้รับงาน @${esc(q.worker && q.worker.username)} · รางวัล <b class="gold">${num(q.reward_gold)} G</b></span>
+        <p style="margin:0;white-space:pre-line"><b>เปิดโดย ${esc(nm(sel.opened_by))}:</b> ${esc(sel.reason)}</p>
+        <div><b class="small">เวลาทำงานที่เช็กอินจริง</b> <span class="small muted">${(ses || []).length} ครั้ง · รวม ${mins} นาที (ประมาณการ ${q.est_minutes} นาที)</span></div>
+        <div class="row">${ev.map((u, i) => link(u, 'หลักฐาน ' + (i + 1))).join('')}${photos.map((u, i) => link(u, 'รูปหน้างาน ' + (i + 1))).join('')}${!ev.length && !photos.length ? '<span class="small muted">ไม่มีไฟล์แนบ</span>' : ''}</div>
+        <div style="max-height:260px;overflow-y:auto;background:#fffdf6;border:1.5px solid var(--brass-500);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:6px">
+          ${(msgs || []).map((m) => `<div class="small"><b>${esc(m.is_staff ? 'ทีมงาน' : nm(m.sender_id))}</b> <span class="muted">${when(m.created_at)}</span><br>${esc(m.body)}</div>`).join('') || '<span class="small muted">ยังไม่มีแชต</span>'}</div>
+        ${edit && !involved ? `<form id="staffMsg" class="row"><input name="b" required maxlength="1000" placeholder="ข้อความถึงทั้งสองฝ่าย" style="flex:1;border:1.5px solid var(--brass-600);border-radius:10px;padding:8px;min-height:40px"><button class="btn sec" type="submit">ส่ง</button></form>
+        <form id="resolveForm" style="display:flex;flex-direction:column;gap:8px" class="dash">
+          <label class="f">ผู้รับงานได้กี่เปอร์เซ็นต์ของรางวัล<input name="pct" type="number" min="0" max="100" step="5" value="50" required></label>
+          <div class="row">${[0, 50, 100].map((v) => `<button type="button" class="pill" data-pct="${v}">${v}%</button>`).join('')}</div>
+          <label class="f">เหตุผลการตัดสิน (ทั้งสองฝ่ายเห็น)<textarea name="note" rows="2" required minlength="5"></textarea></label>
+          <button class="btn primary" type="submit">ตัดสินและปิดข้อพิพาท</button>
+          <span class="small muted">ส่วนที่เหลือคืนผู้โพสต์ · ผู้รับงานได้ ≥ 50% จึงนับเข้าประวัติอาชีพ</span></form>` : involved ? '<p class="small" style="margin:0;color:var(--danger-ink)">คุณเกี่ยวข้องกับงานนี้ ให้ทีมงานคนอื่นตัดสิน</p>' : '<p class="small muted" style="margin:0">ดูได้อย่างเดียว</p>'}
+      </aside>`;
+    }
+    $('content').innerHTML = `<div><h1 style="font-size:28px">ข้อพิพาท</h1><p class="muted" style="margin:4px 0 0">Gold ถูกพักไว้จนกว่าจะตัดสิน · ดูเวลาเช็กอิน รูปหน้างาน แชต และหลักฐานก่อนตัดสิน</p></div>
+      ${data.length ? `<div class="split"><div class="main tbl-wrap"><table style="min-width:480px"><thead><tr><th>งาน</th><th style="text-align:right">รางวัล</th><th>เปิดเมื่อ</th></tr></thead><tbody>
+        ${data.map((d) => `<tr class="${d.id === S.selDispute ? 'sel' : ''}"><td><button class="btn sec" data-dpick="${d.id}" style="min-height:0;padding:4px 8px;border:0;background:none;text-align:left"><b>${esc(d.quest && d.quest.title)}</b><br><span class="small muted">${esc((d.reason || '').slice(0, 60))}</span></button></td>
+          <td class="gold" style="text-align:right">${num(d.quest && d.quest.reward_gold)} G</td><td class="small muted">${when(d.created_at)}</td></tr>`).join('')}</tbody></table></div>${detail}</div>` : '<div class="empty">ไม่มีข้อพิพาทที่เปิดอยู่</div>'}`;
+  };
+
+  VIEWS.users = async () => {
+    const term = (S.userQuery || '').trim();
+    let q = sb.from('profiles').select('id,username,display_name,created_at,base_level,quests_done,kyc_status,banned_until,ban_reason,rating_sum,rating_count,poster_rating_sum,poster_rating_count,no_show_count').order('created_at', { ascending: false }).limit(40);
+    if (term) q = q.ilike('username', '%' + term.replace(/[%_]/g, '') + '%');
+    const { data, error } = await q; if (error) throw error;
+    const ban = can('u.ban'), r = (s, c) => c ? (s / c).toFixed(1) + ' (' + c + ')' : '—';
+    const KY = { none: 'ยังไม่ยืนยัน', pending: 'รอตรวจ', verified: 'ยืนยันแล้ว', rejected: 'ไม่ผ่าน' };
+    $('content').innerHTML = `<h1 style="font-size:28px">ผู้ใช้และการแบน</h1>
+      <form id="userSearch" class="card row" style="align-items:flex-end"><label class="f" style="flex:1 1 220px">ค้นหาชื่อผู้ใช้<input name="q" value="${esc(term)}" autocomplete="off"></label><button class="btn sec" type="submit">ค้นหา</button></form>
+      <div class="tbl-wrap"><table style="min-width:820px"><thead><tr><th>ผู้ใช้</th><th>ตัวตน</th><th>คะแนนผู้รับงาน</th><th>คะแนนผู้โพสต์</th><th>ไม่มาตามนัด</th><th>สถานะ</th><th></th></tr></thead><tbody>
+      ${data.map((u) => { const banned = u.banned_until && new Date(u.banned_until) > Date.now(); return `<tr><td><b>@${esc(u.username)}</b><br><span class="small muted">Lv.${u.base_level} · ${num(u.quests_done)} งาน · บัญชี ${ageDays(u.created_at)} วัน</span></td>
+        <td class="small">${KY[u.kyc_status] || u.kyc_status}</td><td class="small">${r(u.rating_sum, u.rating_count)}</td><td class="small">${r(u.poster_rating_sum, u.poster_rating_count)}</td>
+        <td class="small" style="${u.no_show_count >= 3 ? 'color:var(--danger-ink);font-weight:600' : ''}">${u.no_show_count}</td>
+        <td class="small">${banned ? `<b style="color:var(--danger-ink)">แบนถึง ${new Date(u.banned_until).getFullYear() > 2100 ? 'ถาวร' : when(u.banned_until)}</b><br>${esc(u.ban_reason || '')}` : 'ปกติ'}</td>
+        <td>${ban && u.id !== S.user.id ? (banned ? `<button class="btn sec" data-unban="${u.id}">ยกเลิกแบน</button>` : `<button class="btn danger" data-ban="${u.id}" data-name="${esc(u.username)}">แบน</button>`) : ''}</td></tr>`; }).join('') || '<tr><td colspan="7" class="muted">ไม่พบผู้ใช้</td></tr>'}
+      </tbody></table></div>`;
+  };
+
+  VIEWS.careers = async () => {
+    const [{ data: pr, error }, { data: im }] = await Promise.all([
+      sb.from('promotion_requests').select('*, p:profiles!promotion_requests_user_id_fkey(username)').eq('status', 'pending').order('created_at'),
+      sb.from('career_imports').select('*, p:profiles!career_imports_user_id_fkey(username,created_at)').eq('status', 'pending').order('created_at')]);
+    if (error) throw error;
+    const gates = await Promise.all(pr.map((x) => sb.rpc('career_gates', { p_user: x.user_id, p_occ: x.occupation_id }).then((r) => r.data)));
+    const pf = await Promise.all(pr.map((x) => signed('private-docs', x.portfolio_path)));
+    const docs = await Promise.all((im || []).map((x) => signed('private-docs', x.doc_path)));
+    const edit = can('c.review');
+    $('content').innerHTML = `<div><h1 style="font-size:28px">เลื่อนขั้นอาชีพ</h1><p class="muted" style="margin:4px 0 0">ขั้น D ขึ้นไปต้องผ่านคณะกรรมการ · ระบบตรวจเวลา จำนวนงาน ชั่วโมง คะแนน และคำรับรองให้แล้ว ตรวจคุณภาพผลงานก่อนอนุมัติ</p></div>
+      <h2 style="font-size:17px">ขอเลื่อนขั้น (${pr.length})</h2>
+      ${pr.length ? pr.map((x, i) => { const g = gates[i] || {}; return `<div class="card" style="display:flex;flex-direction:column;gap:8px">
+        <div class="row between"><b>@${esc(x.p && x.p.username)} · ${esc(OCC[x.occupation_id] || x.occupation_id)} ${x.from_rank} → ${x.to_rank}</b><span class="small muted">${when(x.created_at)}</span></div>
+        <span class="small">อยู่ขั้นเดิม ${g.months_in_rank ?? '?'} เดือน · ${num(g.jobs)} งาน · ${num(Math.floor((g.minutes || 0) / 60))} ชม. · คะแนน ${g.rating ? Number(g.rating).toFixed(2) : '—'} (${g.rating_count || 0}) · คำรับรอง ${g.endorsements ?? 0}/${g.endorsements_needed ?? 0} · ${g.ok ? '<b style="color:var(--teal-ink)">ผ่านเกณฑ์ตัวเลข</b>' : '<b style="color:var(--danger-ink)">ไม่ผ่านเกณฑ์แล้ว</b>'}</span>
+        <div class="row">${link(pf[i], 'เปิดแฟ้มผลงาน')}</div>
+        ${edit ? `<div class="row" style="align-items:flex-end"><label class="f" style="flex:1 1 240px">หมายเหตุถึงผู้ขอ<input id="pn-${x.id}" maxlength="300"></label><button class="btn action" data-promo="${x.id}" data-ok="1">อนุมัติ</button><button class="btn sec" data-promo="${x.id}" data-ok="0">ไม่อนุมัติ</button></div>` : ''}</div>`; }).join('') : '<div class="empty">ไม่มีคำขอเลื่อนขั้น</div>'}
+      <h2 style="font-size:17px">เทียบโอนประสบการณ์ (${(im || []).length})</h2>
+      ${(im || []).length ? im.map((x, i) => `<div class="card" style="display:flex;flex-direction:column;gap:8px">
+        <div class="row between"><b>@${esc(x.p && x.p.username)} · ${esc(OCC[x.occupation_id] || x.occupation_id)} · ขอขั้น ${x.requested_rank}</b><span class="small muted">${when(x.created_at)}</span></div>
+        <span class="small">ประสบการณ์ ${x.years_experience} ปี${x.note ? ' · ' + esc(x.note) : ''}</span><div class="row">${link(docs[i], 'เปิดหลักฐาน')}</div>
+        ${edit ? `<div class="row" style="align-items:flex-end"><label class="f">อนุมัติที่ขั้น<select id="ir-${x.id}">${['F', 'E', 'D', 'C'].map((r) => `<option ${r === x.requested_rank ? 'selected' : ''}>${r}</option>`).join('')}</select></label>
+          <label class="f" style="flex:1 1 200px">หมายเหตุ<input id="in-${x.id}" maxlength="300"></label><button class="btn action" data-imp="${x.id}" data-ok="1">อนุมัติ</button><button class="btn sec" data-imp="${x.id}" data-ok="0">ไม่อนุมัติ</button></div>` : ''}</div>`).join('') : '<div class="empty">ไม่มีคำขอเทียบโอน</div>'}`;
+  };
+
+  VIEWS.topups = async () => {
+    const { data, error } = await sb.from('topup_orders').select('*, p:profiles!topup_orders_user_id_fkey(username)').in('status', ['notified', 'pending']).order('notified_at', { ascending: true, nullsFirst: false }).limit(60);
+    if (error) throw error;
+    const slips = await Promise.all(data.map((o) => signed('private-docs', o.slip_path)));
+    const edit = can('m.topup');
+    const notified = data.filter((o) => o.status === 'notified');
+    $('content').innerHTML = `<div><h1 style="font-size:28px">ยืนยันเติมเงิน</h1><p class="muted" style="margin:4px 0 0">ตรวจยอดเข้าบัญชีพร้อมเพย์ ${esc(S.settings.promptpay_id || '(ยังไม่ตั้ง)')} ให้ตรงยอดและเวลาในสลิปก่อนกดเติม · Gold = เงินจริง ถอนได้ · Crystal ถอนไม่ได้</p></div>
+      <div class="kpis"><div class="card kpi"><div class="small muted">สลิปรอตรวจ</div><div class="v">${notified.length}</div><div class="small muted">รวม ${notified.reduce((a, o) => a + Number(o.amount_thb), 0).toLocaleString('th-TH')} บาท</div></div></div>
+      ${data.length ? `<div class="tbl-wrap"><table style="min-width:760px"><thead><tr><th>ผู้ใช้</th><th>รายการ</th><th style="text-align:right">ยอดโอน</th><th>รหัส</th><th>สลิป</th><th></th></tr></thead><tbody>
+      ${data.map((o, i) => `<tr><td><b>@${esc(o.p && o.p.username)}</b><br><span class="small muted">${when(o.created_at)}</span></td><td>${num(o.units)} ${o.currency === 'gold' ? 'Gold' : 'Crystal'}</td>
+        <td class="gold" style="text-align:right">${Number(o.amount_thb).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</td><td style="font-family:var(--font-rpg);font-weight:700">${esc(o.ref_code)}</td>
+        <td>${o.status === 'notified' ? link(slips[i], 'ดูสลิป') + `<br><span class="small muted">แจ้ง ${when(o.notified_at)}</span>` : '<span class="small muted">ยังไม่แจ้งโอน</span>'}</td>
+        <td>${edit && o.user_id !== S.user.id ? `<div class="row" style="justify-content:flex-end"><button class="btn action" data-top="${o.id}" data-ok="1">ยอดเข้าแล้ว · เติม</button><button class="btn sec" data-top="${o.id}" data-ok="0">ไม่พบยอด</button></div>` : ''}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty">ไม่มีรายการรอตรวจ</div>'}`;
+  };
+
+  VIEWS.shop = async () => {
+    const { data, error } = await sb.from('shop_items').select('*').order('sort');
+    if (error) throw error;
+    const edit = can('m.shop');
+    const KIND = { frame: 'กรอบ', title: 'ฉายา', costume: 'ชุด', boost: 'บูสต์' };
+    const form = (i) => `<form class="card" data-shop="${esc(i ? i.id : '')}" style="display:flex;flex-direction:column;gap:8px">
+      <div class="row"><label class="f" style="flex:1 1 140px">รหัส<input name="id" value="${esc(i ? i.id : '')}" ${i ? 'readonly' : ''} required pattern="[a-z0-9_]{2,40}"></label>
+        <label class="f" style="flex:2 1 180px">ชื่อ<input name="nm" value="${esc(i ? i.name : '')}" required minlength="2" maxlength="60"></label></div>
+      <div class="row"><label class="f">ประเภท<select name="kind">${Object.entries(KIND).map(([k, v]) => `<option value="${k}" ${i && i.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+        <label class="f">ช่อง<select name="slot"><option value="">—</option>${['head', 'body', 'feet', 'tool', 'acc'].map((s) => `<option ${i && i.slot === s ? 'selected' : ''}>${s}</option>`).join('')}</select></label>
+        <label class="f" style="flex:1 1 100px">ราคา (C)<input name="price" type="number" min="0" value="${i ? i.price_crystal : 0}" required></label>
+        <label class="row small"><input type="checkbox" name="active" ${!i || i.active ? 'checked' : ''}> ขายอยู่</label></div>
+      <label class="f">คำอธิบาย<input name="desc" value="${esc(i ? i.description || '' : '')}" maxlength="200"></label>
+      ${edit ? `<button class="btn ${i ? 'sec' : 'primary'}" type="submit">${i ? 'บันทึก' : 'เพิ่มสินค้า'}</button>` : ''}</form>`;
+    $('content').innerHTML = `<div><h1 style="font-size:28px">ร้านค้า Crystal</h1><p class="muted" style="margin:4px 0 0">ขายของตกแต่งและความสะดวกเท่านั้น ห้ามขายสิ่งที่เพิ่มขั้นอาชีพหรือคะแนนรีวิว เพื่อให้ขั้นอาชีพมาจากงานจริง</p></div>
+      ${edit ? '<h2 style="font-size:17px">เพิ่มสินค้าใหม่</h2>' + form(null) : ''}
+      <h2 style="font-size:17px">สินค้าทั้งหมด</h2><div class="kpis" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">${data.map(form).join('')}</div>`;
+  };
+
   /* ---------- Actions ---------- */
   $('content').addEventListener('click', async (ev) => {
     const t = ev.target.closest('button'); if (!t) return;
     if (t.dataset.go) return go(t.dataset.go);
     if (t.dataset.qtab) { S.qTab = t.dataset.qtab; S.selQuest = null; return reload(); }
     if (t.dataset.pick) { S.selQuest = t.dataset.pick; return reload(); }
+    if (t.dataset.dpick) { S.selDispute = t.dataset.dpick; return reload(); }
+    if (t.dataset.pct) { const f = $('resolveForm'); if (f) f.elements.pct.value = t.dataset.pct; return; }
+    if (t.dataset.kyc) {
+      const ok = t.dataset.ok === '1', note = ($('kn-' + t.dataset.kyc).value || '').trim() || null;
+      if (!ok && !note) return toast('ใส่เหตุผลที่ไม่ผ่าน ผู้ใช้จะเห็นเหตุผลนี้', true);
+      t.disabled = true; if (await rpc('review_kyc', { p_request: t.dataset.kyc, p_approve: ok, p_note: note }, ok ? 'ยืนยันตัวตนแล้ว' : 'แจ้งผลไม่ผ่านแล้ว')) reload(); else t.disabled = false; return;
+    }
+    if (t.dataset.ban) {
+      const days = prompt('แบน @' + t.dataset.name + ' กี่วัน? (เว้นว่าง = ถาวร)', '7'); if (days === null) return;
+      const reason = prompt('เหตุผลการแบน (ผู้ใช้เห็น)'); if (!reason) return toast('ต้องใส่เหตุผล', true);
+      if (await rpc('ban_user', { p_user: t.dataset.ban, p_days: days.trim() ? Number(days) : null, p_reason: reason.trim() }, 'แบนแล้ว')) reload(); return;
+    }
+    if (t.dataset.unban) { if (confirm('ยกเลิกการแบนผู้ใช้นี้?') && await rpc('ban_user', { p_user: t.dataset.unban, p_days: 0, p_reason: null }, 'ยกเลิกแบนแล้ว')) reload(); return; }
+    if (t.dataset.promo) {
+      const ok = t.dataset.ok === '1', note = ($('pn-' + t.dataset.promo).value || '').trim() || null;
+      t.disabled = true; if (await rpc('review_promotion', { p_request: t.dataset.promo, p_approve: ok, p_note: note }, ok ? 'อนุมัติเลื่อนขั้นแล้ว' : 'แจ้งผลแล้ว')) reload(); else t.disabled = false; return;
+    }
+    if (t.dataset.imp) {
+      const ok = t.dataset.ok === '1', id = t.dataset.imp;
+      t.disabled = true; if (await rpc('review_career_import', { p_request: id, p_approve: ok, p_rank: ok ? $('ir-' + id).value : null, p_note: ($('in-' + id).value || '').trim() || null }, ok ? 'อนุมัติเทียบโอนแล้ว' : 'แจ้งผลแล้ว')) reload(); else t.disabled = false; return;
+    }
+    if (t.dataset.top) {
+      const ok = t.dataset.ok === '1';
+      if (!confirm(ok ? 'ยืนยันว่ายอดเงินเข้าบัญชีแล้ว และเติมให้ผู้ใช้?' : 'แจ้งว่าไม่พบยอดโอน?')) return;
+      const note = ok ? null : prompt('เหตุผล (ผู้ใช้เห็น)', 'ตรวจไม่พบยอดโอนที่ตรงกับสลิป');
+      t.disabled = true; if (await rpc('decide_topup', { p_order: t.dataset.top, p_approve: ok, p_note: note }, ok ? 'เติมให้ผู้ใช้แล้ว' : 'แจ้งผลแล้ว')) reload(); else t.disabled = false; return;
+    }
+
     if (t.dataset.mod) {
       const d = t.dataset.mod, note = ($('modNote') && $('modNote').value.trim()) || null;
       if (d === 'suspend' && !confirm('ระงับเควสต์นี้และคืน Gold ให้ผู้โพสต์?')) return;
@@ -443,11 +625,22 @@ tr.sel td{background:var(--parchment-200)}
   });
   $('content').addEventListener('submit', async (ev) => {
     const f = ev.target; ev.preventDefault();
-    if (f.dataset.setting) { if (await rpc('set_setting', { p_key: f.dataset.setting, p_value: f.v.value.trim() }, 'บันทึกแล้ว')) reload(); return; }
+    if (f.dataset.setting) { if (await rpc('set_setting', { p_key: f.dataset.setting, p_value: f.elements.v.value.trim() }, 'บันทึกแล้ว')) reload(); return; }
+    if (f.id === 'userSearch') { S.userQuery = f.elements.q.value; return reload(); }
+    if (f.id === 'staffMsg') { if (await rpc('send_message', { p_quest: (await sb.from('disputes').select('quest_id').eq('id', S.selDispute).single()).data.quest_id, p_body: f.elements.b.value.trim() }, 'ส่งข้อความแล้ว')) reload(); return; }
+    if (f.id === 'resolveForm') {
+      const pct = Number(f.elements.pct.value);
+      if (!confirm(`ตัดสินให้ผู้รับงานได้ ${pct}% และคืนผู้โพสต์ ${100 - pct}%?`)) return;
+      if (await rpc('resolve_dispute', { p_dispute: S.selDispute, p_worker_pct: pct, p_note: f.elements.note.value.trim() }, 'ตัดสินแล้ว')) { S.selDispute = null; reload(); } return;
+    }
+    if (f.dataset.shop !== undefined) {
+      const e = f.elements;
+      if (await rpc('save_shop_item', { p_id: e.id.value.trim(), p_name: e.nm.value.trim(), p_kind: e.kind.value, p_slot: e.slot.value || null, p_price: Number(e.price.value), p_description: e.desc.value.trim() || null, p_active: e.active.checked }, 'บันทึกสินค้าแล้ว')) reload(); return;
+    }
     if (f.id === 'addStaff') {
-      const { data: p } = await sb.from('profiles').select('id').eq('username', f.u.value.trim()).maybeSingle();
+      const { data: p } = await sb.from('profiles').select('id').eq('username', f.elements.u.value.trim()).maybeSingle();
       if (!p) return toast('ไม่พบชื่อผู้ใช้นี้', true);
-      if (await rpc('assign_staff', { p_user: p.id, p_role: f.r.value }, 'เพิ่มเข้าทีมแล้ว')) reload();
+      if (await rpc('assign_staff', { p_user: p.id, p_role: f.elements.r.value }, 'เพิ่มเข้าทีมแล้ว')) reload();
     }
   });
 })();
