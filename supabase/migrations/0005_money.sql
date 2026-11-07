@@ -1,7 +1,8 @@
 -- Real-life Quest — money: buying Gold and Crystal with PromptPay (confirmed by finance),
 -- Crystal gifting, the Crystal shop, and identity-checked withdrawals.
---   Gold    = bought from the platform or earned from work; pays for work. Never withdrawn.
---   Crystal = bought from the platform. Can be given to family or anyone, never withdrawn, spent in the shop.
+--   Gold    = the everyday in-app currency (like Robux): bought in bulk, spent on items, food, posting fees.
+--   Crystal = premium currency for limited special items; can be given to anyone.
+--   Neither can ever be withdrawn. Job wages are real baht paid by the poster straight to the worker.
 
 insert into public.app_settings (key, value) values
   ('crystal_thb_rate', ''),
@@ -28,10 +29,10 @@ begin
   elsif p_key = 'promptpay_name' then
     if char_length(v) > 100 then raise exception 'name too long'; end if;
   elsif p_key in ('signup_bonus_gold','review_reward_threshold','withdraw_min_gold','withdraw_dual_threshold',
-                  'platform_fee_pct','auto_release_hours','checkin_radius_m','topup_min_thb',
-                  'crystal_daily_transfer_max','personal_exp_cap') then
+                  'post_fee_gold','urgent_fee_gold','career_min_wage_hour','auto_release_hours','checkin_radius_m','topup_min_thb',
+                  'crystal_daily_transfer_max','personal_exp_cap','habit_exp_cap') then
     if v !~ '^[0-9]{1,12}$' then raise exception 'must be a whole number'; end if;
-    if p_key = 'platform_fee_pct' and v::int > 30 then raise exception 'fee must be 0-30%%'; end if;
+    if p_key in ('post_fee_gold','urgent_fee_gold') and v::int > 100000 then raise exception 'fee too high'; end if;
     if p_key = 'auto_release_hours' and v::int not between 12 and 336 then raise exception 'auto release must be 12-336 hours'; end if;
     if p_key = 'checkin_radius_m' and v::int not between 50 and 5000 then raise exception 'radius must be 50-5000 m'; end if;
   else
@@ -195,25 +196,30 @@ create table public.shop_items (
   name text not null check (char_length(name) between 2 and 60),
   kind text not null check (kind in ('frame','title','costume','boost')),
   slot text check (slot in ('head','body','feet','tool','acc')),
-  price_crystal int not null check (price_crystal >= 0),
+  price int not null check (price >= 0),
+  currency text not null default 'gold' check (currency in ('gold','crystal')),
+  stock int check (stock > 0),              -- null = unlimited; limited specials are usually Crystal
+  sold int not null default 0,
   description text check (char_length(description) <= 200),
   data jsonb not null default '{}'::jsonb,
   active boolean not null default true,
   sort int not null default 0,
   created_at timestamptz not null default now()
 );
-insert into public.shop_items (id, name, kind, slot, price_crystal, description, data, active, sort) values
-  ('frame_brass', 'กรอบทองเหลือง', 'frame', null, 49, 'กรอบรูปโปรไฟล์ลายทองเหลือง', '{"color":"#c9a86a"}', true, 1),
-  ('frame_jade', 'กรอบหยก', 'frame', null, 99, 'กรอบรูปโปรไฟล์สีหยก', '{"color":"#1f6f6b"}', true, 2),
-  ('title_hardworker', 'ขยันไม่มีวันหยุด', 'title', null, 29, 'ฉายาแสดงใต้ชื่อ', '{}', true, 3),
-  ('title_nightowl', 'นกฮูกยามดึก', 'title', null, 29, 'ฉายาแสดงใต้ชื่อ', '{}', true, 4),
-  ('hat_straw', 'หมวกสาน', 'costume', 'head', 39, 'ชุดแต่งตัวละคร ช่องหมวก', '{}', true, 5),
-  ('jacket_explorer', 'แจ็กเก็ตนักผจญภัย', 'costume', 'body', 79, 'ชุดแต่งตัวละคร ช่องเสื้อ', '{}', true, 6),
-  ('boots_travel', 'รองเท้าบูทเดินทาง', 'costume', 'feet', 59, 'ชุดแต่งตัวละคร ช่องรองเท้า', '{}', true, 7),
+insert into public.shop_items (id, name, kind, slot, price, description, data, active, sort) values
+  ('frame_brass', 'กรอบทองเหลือง', 'frame', null, 490, 'กรอบรูปโปรไฟล์ลายทองเหลือง', '{"color":"#c9a86a"}', true, 1),
+  ('frame_jade', 'กรอบหยก', 'frame', null, 990, 'กรอบรูปโปรไฟล์สีหยก', '{"color":"#1f6f6b"}', true, 2),
+  ('title_hardworker', 'ขยันไม่มีวันหยุด', 'title', null, 290, 'ฉายาแสดงใต้ชื่อ', '{}', true, 3),
+  ('title_nightowl', 'นกฮูกยามดึก', 'title', null, 290, 'ฉายาแสดงใต้ชื่อ', '{}', true, 4),
+  ('hat_straw', 'หมวกสาน', 'costume', 'head', 390, 'ชุดแต่งตัวละคร ช่องหมวก', '{}', true, 5),
+  ('jacket_explorer', 'แจ็กเก็ตนักผจญภัย', 'costume', 'body', 790, 'ชุดแต่งตัวละคร ช่องเสื้อ', '{}', true, 6),
+  ('boots_travel', 'รองเท้าบูทเดินทาง', 'costume', 'feet', 590, 'ชุดแต่งตัวละคร ช่องรองเท้า', '{}', true, 7),
   ('wrench_gold', 'ประแจทองคำ', 'costume', 'tool', 149, 'ของสะสม ช่องเครื่องมือ', '{}', true, 8),
-  ('charm_luck', 'เครื่องรางนำโชค', 'costume', 'acc', 69, 'ของสะสม ช่องเครื่องประดับ', '{}', true, 9),
-  ('boost_personal_slots', 'ช่องเควสต์ส่วนตัว +2', 'boost', null, 59, 'เพิ่มช่องเควสต์ส่วนตัวถาวร 2 ช่อง (ไม่เพิ่ม EXP สูงสุดต่อวัน)', '{"personal_slots":2}', true, 10),
+  ('charm_luck', 'เครื่องรางนำโชค', 'costume', 'acc', 690, 'ของสะสม ช่องเครื่องประดับ', '{}', true, 9),
+  ('boost_personal_slots', 'ช่องเควสต์ส่วนตัว +2', 'boost', null, 590, 'เพิ่มช่องเควสต์ส่วนตัวถาวร 2 ช่อง (ไม่เพิ่ม EXP สูงสุดต่อวัน)', '{"personal_slots":2}', true, 10),
   ('title_monthly_hero', 'วีรชนประจำเดือน', 'title', null, 0, 'ได้จากรางวัลสะสมประจำเดือน', '{}', false, 99);
+-- Limited Crystal special.
+update public.shop_items set currency = 'crystal', price = 149, stock = 500, description = 'ของสะสมรุ่นจำกัด 500 ชิ้น ช่องเครื่องมือ' where id = 'wrench_gold';
 
 create table public.user_items (
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -253,10 +259,18 @@ begin
   select * into i from shop_items where id = p_item and active;
   if not found then raise exception 'item not available'; end if;
   if exists (select 1 from user_items where user_id = v_uid and item_id = p_item) then raise exception 'already owned'; end if;
-  update wallets set crystal = crystal - i.price_crystal, updated_at = now() where user_id = v_uid and crystal >= i.price_crystal;
-  if not found then raise exception 'not enough crystal'; end if;
+  update shop_items set sold = sold + 1 where id = p_item and (stock is null or sold < stock);
+  if not found then raise exception 'sold out'; end if;
+  if i.currency = 'gold' then
+    update wallets set gold = gold - i.price, updated_at = now() where user_id = v_uid and gold >= i.price;
+    if not found then raise exception 'not enough gold'; end if;
+    perform _ledger(v_uid, 'shop_buy', -i.price, 0, null, null, i.name);
+  else
+    update wallets set crystal = crystal - i.price, updated_at = now() where user_id = v_uid and crystal >= i.price;
+    if not found then raise exception 'not enough crystal'; end if;
+    perform _ledger_c(v_uid, 'shop_buy', -i.price, i.name);
+  end if;
   perform _give_item(v_uid, p_item);
-  perform _ledger_c(v_uid, 'shop_buy', -i.price_crystal, i.name);
 end $$;
 
 create function public.equip_item(p_item text, p_on boolean)
@@ -280,7 +294,7 @@ begin
 end $$;
 
 create function public.save_shop_item(p_id text, p_name text, p_kind text, p_slot text, p_price int,
-                                      p_description text, p_active boolean)
+                                      p_currency text, p_stock int, p_description text, p_active boolean)
 returns void
 language plpgsql
 security definer
@@ -288,11 +302,11 @@ set search_path = public
 as $$
 begin
   if not has_perm('m.shop') then raise exception 'forbidden'; end if;
-  insert into shop_items (id, name, kind, slot, price_crystal, description, active)
-  values (p_id, p_name, p_kind, nullif(p_slot, ''), p_price, p_description, p_active)
-  on conflict (id) do update set name = excluded.name, kind = excluded.kind, slot = excluded.slot,
-    price_crystal = excluded.price_crystal, description = excluded.description, active = excluded.active;
-  perform _audit('shop.save', 'shop_item', p_id, jsonb_build_object('price', p_price, 'active', p_active));
+  insert into shop_items (id, name, kind, slot, price, currency, stock, description, active)
+  values (p_id, p_name, p_kind, nullif(p_slot, ''), p_price, coalesce(p_currency, 'gold'), p_stock, p_description, p_active)
+  on conflict (id) do update set name = excluded.name, kind = excluded.kind, slot = excluded.slot, price = excluded.price,
+    currency = excluded.currency, stock = excluded.stock, description = excluded.description, active = excluded.active;
+  perform _audit('shop.save', 'shop_item', p_id, jsonb_build_object('price', p_price, 'currency', p_currency, 'stock', p_stock, 'active', p_active));
 end $$;
 
 -- ---------- no withdrawals ----------
@@ -322,8 +336,8 @@ create policy "items readable" on public.user_items for select to authenticated 
 revoke execute on function public._ledger_c(uuid, text, bigint, text), public._give_item(uuid, text) from public, anon, authenticated;
 revoke execute on function public.create_topup(text, bigint), public.notify_topup_paid(uuid, text), public.cancel_topup(uuid),
   public.decide_topup(uuid, boolean, text), public.transfer_crystal(text, bigint, text), public.buy_item(text),
-  public.equip_item(text, boolean), public.save_shop_item(text, text, text, text, int, text, boolean) from public, anon;
+  public.equip_item(text, boolean), public.save_shop_item(text, text, text, text, int, text, int, text, boolean) from public, anon;
 grant execute on function public.create_topup(text, bigint), public.notify_topup_paid(uuid, text), public.cancel_topup(uuid),
   public.decide_topup(uuid, boolean, text), public.transfer_crystal(text, bigint, text), public.buy_item(text),
-  public.equip_item(text, boolean), public.save_shop_item(text, text, text, text, int, text, boolean),
+  public.equip_item(text, boolean), public.save_shop_item(text, text, text, text, int, text, int, text, boolean),
   public.request_withdrawal(bigint, text), public.set_setting(text, text) to authenticated;

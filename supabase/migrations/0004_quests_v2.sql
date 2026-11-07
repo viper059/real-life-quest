@@ -1,8 +1,12 @@
 -- Real-life Quest — quests v2: career-matched applications, job-site location, check-in hours,
--- reviews, disputes, chat, and escrow settlement with an optional platform fee.
+-- reviews, disputes, chat. Wages are real baht paid by the poster straight to the worker (PromptPay QR or cash);
+-- the platform never holds wage money. Posting costs a small Gold fee (platform revenue, burned).
+-- Family quests keep their Gold reward held in escrow inside the app.
 
 insert into public.app_settings (key, value) values
-  ('platform_fee_pct', '0'),
+  ('post_fee_gold', '10'),
+  ('urgent_fee_gold', '20'),
+  ('career_min_wage_hour', '40'),
   ('auto_release_hours', '72'),
   ('checkin_radius_m', '300')
 on conflict (key) do nothing;
@@ -21,7 +25,24 @@ alter table public.quests
   add column auto_release_at timestamptz,
   add column completed_at timestamptz,
   add column worker_minutes int not null default 0,
-  add column career_counted boolean not null default false;
+  add column career_counted boolean not null default false,
+  add column wage_baht numeric(10,2) not null default 0 check (wage_baht >= 0 and wage_baht <= 100000),
+  add column pay_method text not null default 'either' check (pay_method in ('promptpay','cash','either')),
+  add column payment_status text not null default 'none'
+    check (payment_status in ('none','due','paid','received','unpaid_reported','written_off')),
+  add column payment_due_baht numeric(10,2),
+  add column paid_at timestamptz,
+  add column received_at timestamptz,
+  add column post_fee_gold bigint not null default 0;
+-- Public quests carry no Gold reward any more (wage is paid in baht outside the app).
+alter table public.quests drop constraint quests_reward_gold_check;
+alter table public.quests add constraint quests_reward_gold_check check (reward_gold >= 0);
+create index quests_payment_idx on public.quests (poster_id, payment_status);
+
+alter table public.profiles add column unpaid_count int not null default 0;
+-- Where the worker receives wages. Shown only to the poster of a quest they finished.
+alter table public.private_profiles
+  add column promptpay_id text check (promptpay_id ~ '^([0-9]{10}|[0-9]{13})$');
 create index quests_due_idx on public.quests (status, due_at);
 create index quests_release_idx on public.quests (status, auto_release_at);
 
@@ -185,7 +206,7 @@ $$;
 
 -- ---------- posting ----------
 create function public.post_quest_v2(
-  p_title text, p_description text, p_category text, p_rank text, p_reward_gold bigint,
+  p_title text, p_description text, p_category text, p_rank text, p_wage_baht numeric, p_pay_method text,
   p_est_minutes int, p_due_at timestamptz, p_urgent_minutes int, p_instant boolean,
   p_remote boolean, p_lat double precision, p_lng double precision, p_address text)
 returns uuid
@@ -197,36 +218,43 @@ declare
   v_uid uuid := public._assert_verified();
   v_id uuid;
   v_rank text := coalesce(p_rank, 'F');
-  v_threshold bigint := coalesce(nullif((select value from app_settings where key = 'review_reward_threshold'), '')::bigint, 5000);
+  v_threshold numeric := coalesce(nullif((select value from app_settings where key = 'review_reward_threshold'), '')::numeric, 5000);
+  v_fee bigint := _setting_int('post_fee_gold', 10) + case when p_urgent_minutes is not null then _setting_int('urgent_fee_gold', 20) else 0 end;
 begin
   if p_category <> 'general' and not exists (select 1 from occupations where id = p_category) then raise exception 'unknown category'; end if;
   if p_category = 'general' then v_rank := 'F'; end if;
   if v_rank not in ('F','E','D','C','B','A','S') then raise exception 'bad rank'; end if;
-  if p_reward_gold is null or p_reward_gold <= 0 then raise exception 'reward must be positive'; end if;
+  if p_wage_baht is null or p_wage_baht <= 0 or p_wage_baht > 100000 then raise exception 'wage must be 1-100000 baht'; end if;
+  if coalesce(p_pay_method, 'either') not in ('promptpay','cash','either') then raise exception 'bad pay method'; end if;
   if p_est_minutes is null or p_est_minutes < 10 or p_est_minutes > 10080 then raise exception 'estimated time must be 10 minutes to 7 days'; end if;
   if p_due_at is not null and p_due_at < now() + interval '10 minutes' then raise exception 'due time must be in the future'; end if;
   if p_urgent_minutes is not null and (p_urgent_minutes < 10 or p_urgent_minutes > 1440) then
     raise exception 'urgent window must be 10-1440 minutes';
   end if;
   if not coalesce(p_remote, false) and (p_lat is null or p_lng is null) then raise exception 'location required'; end if;
-  update wallets set gold = gold - p_reward_gold, gold_locked = gold_locked + p_reward_gold, updated_at = now()
-   where user_id = v_uid and gold >= p_reward_gold;
-  if not found then raise exception 'not enough gold'; end if;
+  if exists (select 1 from quests where poster_id = v_uid and payment_status = 'unpaid_reported') then
+    raise exception 'unpaid wages outstanding';
+  end if;
+  if v_fee > 0 then
+    update wallets set gold = gold - v_fee, updated_at = now() where user_id = v_uid and gold >= v_fee;
+    if not found then raise exception 'not enough gold for the posting fee'; end if;
+  end if;
   insert into quests (poster_id, title, description, category, rank, reward_gold, reward_exp, moderation, urgent_until,
-                      est_minutes, due_at, instant, remote, approx_lat, approx_lng)
-  values (v_uid, trim(p_title), nullif(trim(p_description), ''), p_category, v_rank, p_reward_gold,
+                      est_minutes, due_at, instant, remote, approx_lat, approx_lng, wage_baht, pay_method, post_fee_gold)
+  values (v_uid, trim(p_title), nullif(trim(p_description), ''), p_category, v_rank, 0,
           least(240, greatest(5, p_est_minutes / 2)),
-          case when p_reward_gold >= v_threshold then 'pending' else 'approved' end,
+          case when p_wage_baht >= v_threshold then 'pending' else 'approved' end,
           case when p_urgent_minutes is null then null else now() + make_interval(mins => p_urgent_minutes) end,
           p_est_minutes, p_due_at, coalesce(p_instant, false), coalesce(p_remote, false),
           case when p_remote then null else round(p_lat::numeric, 2) end,
-          case when p_remote then null else round(p_lng::numeric, 2) end)
+          case when p_remote then null else round(p_lng::numeric, 2) end,
+          round(p_wage_baht, 2), coalesce(p_pay_method, 'either'), v_fee)
   returning id into v_id;
   if not coalesce(p_remote, false) then
     insert into quest_locations (quest_id, lat, lng, address) values (v_id, p_lat, p_lng, nullif(trim(p_address), ''));
   end if;
-  perform _ledger(v_uid, 'quest_escrow', -p_reward_gold, p_reward_gold, v_id);
-  if p_reward_gold >= v_threshold then
+  if v_fee > 0 then perform _ledger(v_uid, 'post_fee', -v_fee, 0, v_id); end if;
+  if p_wage_baht >= v_threshold then
     perform _notify_perm('q.review', 'moderation', 'มีเควสต์รอตรวจ', trim(p_title), 'admin.html#quests');
   end if;
   return v_id;
@@ -240,7 +268,7 @@ language sql
 security definer
 set search_path = public
 as $$
-  select public.post_quest_v2(p_title, p_description, p_category, p_rank, p_reward_gold, 60, null,
+  select public.post_quest_v2(p_title, p_description, p_category, p_rank, p_reward_gold::numeric, 'either', 60, null,
                               p_urgent_minutes, false, true, null, null, null)
 $$;
 
@@ -278,6 +306,10 @@ begin
   end if;
   v_reason := _eligibility(v_uid, p_quest);
   if v_reason is not null then raise exception '%', v_reason; end if;
+  if q.family_id is null and q.pay_method = 'promptpay'
+     and not exists (select 1 from private_profiles where user_id = v_uid and promptpay_id is not null) then
+    raise exception 'set your PromptPay first';
+  end if;
   if q.instant or q.family_id is not null then
     perform _assign(p_quest, v_uid);
     perform _notify(q.poster_id, 'quest', 'มีคนรับงานแล้ว', q.title, 'index.html#quest-' || q.id);
@@ -446,17 +478,16 @@ set search_path = public
 as $$
 declare
   q quests%rowtype;
-  v_gross bigint; v_refund bigint; v_fee bigint := 0; v_pct int := 0;
+  v_gross bigint; v_refund bigint; v_pct int := 0;
   v_exp int; v_minutes int := 0; v_counted boolean := false; v_done int;
 begin
   select * into q from quests where id = p_quest for update;
   if not found or q.status not in ('in_progress','submitted') then raise exception 'quest not settleable'; end if;
   v_gross := floor(q.reward_gold * p_worker_pct / 100.0);
   v_refund := q.reward_gold - v_gross;
-  if q.family_id is null and v_gross > 0 then
-    v_fee := floor(v_gross * _setting_int('platform_fee_pct', 0) / 100.0);
-  end if;
 
+  -- Gold escrow exists only for family quests; public wages are paid in baht outside the app.
+  if q.reward_gold > 0 then
   update wallets set gold_locked = gold_locked - q.reward_gold, gold = gold + v_refund, updated_at = now()
    where user_id = q.poster_id and gold_locked >= q.reward_gold;
   if not found then raise exception 'escrow mismatch'; end if;
@@ -464,9 +495,9 @@ begin
   if v_refund > 0 then perform _ledger(q.poster_id, 'quest_refund', v_refund, -v_refund, q.id, null, p_reason); end if;
 
   if v_gross > 0 then
-    update wallets set gold = gold + v_gross - v_fee, updated_at = now() where user_id = q.worker_id;
+    update wallets set gold = gold + v_gross, updated_at = now() where user_id = q.worker_id;
     perform _ledger(q.worker_id, 'quest_reward', v_gross, 0, q.id, null, p_reason);
-    if v_fee > 0 then perform _ledger(q.worker_id, 'platform_fee', -v_fee, 0, q.id, null, _setting_int('platform_fee_pct', 0) || '%'); end if;
+  end if;
   end if;
 
   if p_worker_pct >= 50 then
@@ -485,7 +516,9 @@ begin
       select least(coalesce(sum(minutes), 0), (q.est_minutes * 3) / 2) into v_minutes from work_sessions where quest_id = q.id;
       v_counted := (select count(*) from quests x
                      where x.worker_id = q.worker_id and x.poster_id = q.poster_id and x.career_counted
-                       and x.completed_at > now() - interval '30 days') < 5;
+                       and x.completed_at > now() - interval '30 days') < 5
+                   -- a believable wage: at least career_min_wage_hour baht per estimated hour
+                   and (q.family_id is not null or q.wage_baht * 60 / greatest(q.est_minutes, 1) >= _setting_int('career_min_wage_hour', 40));
       insert into user_careers (user_id, occupation_id) values (q.worker_id, q.category) on conflict do nothing;
       if v_counted then
         update user_careers set jobs = jobs + 1, minutes = minutes + v_minutes
@@ -496,12 +529,18 @@ begin
 
   update quests set status = case when p_worker_pct > 0 then 'completed' else 'cancelled' end,
          completed_at = now(), updated_at = now(), dispute_open = false,
-         worker_minutes = v_minutes, career_counted = v_counted
+         worker_minutes = v_minutes, career_counted = v_counted,
+         payment_status = case when q.family_id is null and p_worker_pct > 0 and q.wage_baht > 0 then 'due' else 'none' end,
+         payment_due_baht = case when q.family_id is null and p_worker_pct > 0 then round(q.wage_baht * p_worker_pct / 100.0, 2) end
    where id = q.id;
+  if q.family_id is null and p_worker_pct > 0 and q.wage_baht > 0 then
+    perform _notify(q.poster_id, 'money', 'จ่ายค่าจ้าง ' || round(q.wage_baht * p_worker_pct / 100.0, 2) || ' บาท ให้ผู้รับงาน',
+      q.title || ' · เปิดดู QR พร้อมเพย์ของผู้รับงานในแอป', 'index.html#quest-' || q.id);
+  end if;
   update quest_applications set status = 'rejected' where quest_id = q.id and status = 'pending';
 
   if v_gross > 0 then
-    perform _notify(q.worker_id, 'money', 'ได้รับ ' || (v_gross - v_fee) || ' G', q.title, 'index.html#wallet');
+    perform _notify(q.worker_id, 'money', 'ได้รับ ' || v_gross || ' G', q.title, 'index.html#wallet');
   end if;
   if v_refund > 0 then
     perform _notify(q.poster_id, 'money', 'คืน ' || v_refund || ' G เข้ากระเป๋า', q.title, 'index.html#wallet');
@@ -534,10 +573,12 @@ begin
   select * into q from quests where id = p_quest for update;
   if not found or q.poster_id <> v_uid then raise exception 'cannot cancel this quest'; end if;
   if q.status = 'open' then
-    update wallets set gold = gold + q.reward_gold, gold_locked = gold_locked - q.reward_gold, updated_at = now() where user_id = q.poster_id;
+    if q.reward_gold > 0 then
+      update wallets set gold = gold + q.reward_gold, gold_locked = gold_locked - q.reward_gold, updated_at = now() where user_id = q.poster_id;
+      perform _ledger(q.poster_id, 'quest_refund', q.reward_gold, -q.reward_gold, q.id);
+    end if;
     update quests set status = 'cancelled', updated_at = now() where id = q.id;
     update quest_applications set status = 'rejected' where quest_id = q.id and status = 'pending';
-    perform _ledger(q.poster_id, 'quest_refund', q.reward_gold, -q.reward_gold, q.id);
   elsif q.status = 'in_progress' and not q.dispute_open and not exists (select 1 from work_sessions where quest_id = q.id) then
     if q.due_at is not null and q.due_at < now() then
       update profiles set no_show_count = no_show_count + 1 where id = q.worker_id;
@@ -724,14 +765,14 @@ revoke execute on function public._distance_m(double precision, double precision
   public._setting_int(text, int), public._grant_exp(uuid, int), public._eligibility(uuid, uuid), public._assign(uuid, uuid),
   public._settle(uuid, int, text) from public, anon, authenticated;
 revoke execute on function public.quest_eligibility(uuid),
-  public.post_quest_v2(text, text, text, text, bigint, int, timestamptz, int, boolean, boolean, double precision, double precision, text),
+  public.post_quest_v2(text, text, text, text, numeric, text, int, timestamptz, int, boolean, boolean, double precision, double precision, text),
   public.apply_quest(uuid, text), public.withdraw_application(uuid), public.choose_worker(uuid, uuid),
   public.check_in(uuid, double precision, double precision, text), public.check_out(uuid, double precision, double precision, text),
   public.abandon_quest(uuid), public.submit_review(uuid, int, text), public.open_dispute(uuid, text, text[]),
   public.add_dispute_evidence(uuid, text), public.resolve_dispute(uuid, int, text), public.send_message(uuid, text)
   from public, anon;
 grant execute on function public.quest_eligibility(uuid),
-  public.post_quest_v2(text, text, text, text, bigint, int, timestamptz, int, boolean, boolean, double precision, double precision, text),
+  public.post_quest_v2(text, text, text, text, numeric, text, int, timestamptz, int, boolean, boolean, double precision, double precision, text),
   public.apply_quest(uuid, text), public.withdraw_application(uuid), public.choose_worker(uuid, uuid),
   public.check_in(uuid, double precision, double precision, text), public.check_out(uuid, double precision, double precision, text),
   public.abandon_quest(uuid), public.submit_review(uuid, int, text), public.open_dispute(uuid, text, text[]),
@@ -749,3 +790,111 @@ create policy "rlq quest-media read by party or staff" on storage.objects for se
     public._quest_role((storage.foldername(name))[1]) in ('poster','worker') or public.has_perm('q.dispute', 'view')));
 
 alter publication supabase_realtime add table public.messages, public.quest_applications;
+
+-- ---------- wages: paid by the poster straight to the worker ----------
+-- Worker sets where they receive money (needs a verified identity).
+create function public.set_payout(p_promptpay text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_uid uuid := public._assert_verified(); v_id text := regexp_replace(coalesce(p_promptpay, ''), '\D', '', 'g');
+begin
+  if v_id !~ '^([0-9]{10}|[0-9]{13})$' then raise exception 'promptpay must be 10 or 13 digits'; end if;
+  insert into private_profiles (user_id, promptpay_id) values (v_uid, v_id)
+  on conflict (user_id) do update set promptpay_id = excluded.promptpay_id, updated_at = now();
+end $$;
+
+-- What the poster needs to pay: amount, method and the worker's PromptPay with a masked legal name to check.
+create function public.payment_info(p_quest uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare q quests%rowtype; pp private_profiles%rowtype;
+begin
+  select * into q from quests where id = p_quest;
+  if not found or (q.poster_id <> auth.uid() and q.worker_id is distinct from auth.uid()) then raise exception 'not part of this quest'; end if;
+  if q.payment_status = 'none' then return jsonb_build_object('status', 'none'); end if;
+  select * into pp from private_profiles where user_id = q.worker_id;
+  return jsonb_build_object('status', q.payment_status, 'amount', q.payment_due_baht, 'method', q.pay_method,
+    'promptpay', case when q.poster_id = auth.uid() then pp.promptpay_id end,
+    'name_hint', case when pp.legal_name is null then null
+                      else split_part(pp.legal_name, ' ', 1) || ' ' || left(split_part(pp.legal_name, ' ', 2), 1) || '***' end,
+    'paid_at', q.paid_at, 'received_at', q.received_at);
+end $$;
+
+create function public.mark_paid(p_quest uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_uid uuid := public._assert_active(); q quests%rowtype;
+begin
+  select * into q from quests where id = p_quest for update;
+  if not found or q.poster_id <> v_uid or q.payment_status not in ('due','unpaid_reported') then raise exception 'nothing to pay'; end if;
+  update quests set payment_status = 'paid', paid_at = now(), updated_at = now() where id = q.id;
+  perform _notify(q.worker_id, 'money', 'ผู้จ้างแจ้งว่าจ่ายค่าจ้าง ' || q.payment_due_baht || ' บาทแล้ว — ตรวจแล้วกดยืนยัน', q.title, 'index.html#quest-' || q.id);
+end $$;
+
+create function public.confirm_received(p_quest uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_uid uuid := public._assert_active(); q quests%rowtype;
+begin
+  select * into q from quests where id = p_quest for update;
+  if not found or q.worker_id is distinct from v_uid or q.payment_status not in ('due','paid','unpaid_reported') then
+    raise exception 'nothing to confirm';
+  end if;
+  update quests set payment_status = 'received', received_at = now(), updated_at = now() where id = q.id;
+  perform _notify(q.poster_id, 'money', 'ผู้รับงานยืนยันว่าได้รับค่าจ้างแล้ว', q.title, 'index.html#quest-' || q.id);
+end $$;
+
+-- Worker says the money never came (after 24 h). The poster cannot post again until it is settled.
+create function public.report_unpaid(p_quest uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_uid uuid := public._assert_active(); q quests%rowtype;
+begin
+  select * into q from quests where id = p_quest for update;
+  if not found or q.worker_id is distinct from v_uid or q.payment_status not in ('due','paid') then raise exception 'nothing to report'; end if;
+  if q.completed_at > now() - interval '24 hours' then raise exception 'wait 24 hours before reporting'; end if;
+  update quests set payment_status = 'unpaid_reported', updated_at = now() where id = q.id;
+  perform _notify(q.poster_id, 'money', 'ผู้รับงานแจ้งว่ายังไม่ได้รับค่าจ้าง — คุณจะโพสต์งานใหม่ไม่ได้จนกว่าจะจ่าย', q.title, 'index.html#quest-' || q.id);
+  perform _notify_perm('q.dispute', 'money', 'แจ้งไม่ได้รับค่าจ้าง', q.title || ' · ' || q.payment_due_baht || ' บาท', 'admin.html#unpaid');
+end $$;
+
+-- Staff close an unpaid report: proven paid → received; not paid → written off and a strike on the poster.
+create function public.resolve_unpaid(p_quest uuid, p_paid boolean, p_note text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare q quests%rowtype;
+begin
+  if not has_perm('q.dispute') then raise exception 'forbidden'; end if;
+  select * into q from quests where id = p_quest for update;
+  if not found or q.payment_status <> 'unpaid_reported' then raise exception 'not reported'; end if;
+  if auth.uid() in (q.poster_id, q.worker_id) then raise exception 'cannot judge your own quest'; end if;
+  update quests set payment_status = case when p_paid then 'received' else 'written_off' end, updated_at = now() where id = q.id;
+  if not p_paid then update profiles set unpaid_count = unpaid_count + 1 where id = q.poster_id; end if;
+  perform _audit('quest.unpaid', 'quest', q.id::text, jsonb_build_object('paid', p_paid, 'note', p_note));
+  perform _notify(q.worker_id, 'money', case when p_paid then 'ทีมงานยืนยันว่าจ่ายแล้ว' else 'ทีมงานบันทึกว่าผู้จ้างไม่จ่าย และลงโทษผู้จ้างแล้ว' end, coalesce(p_note, q.title), 'index.html#quest-' || q.id);
+  perform _notify(q.poster_id, 'money', case when p_paid then 'เรื่องค่าจ้างปิดแล้ว' else 'คุณถูกบันทึกว่าไม่จ่ายค่าจ้าง 1 ครั้ง' end, coalesce(p_note, q.title), 'index.html#quest-' || q.id);
+end $$;
+
+revoke execute on function public.set_payout(text), public.payment_info(uuid), public.mark_paid(uuid), public.confirm_received(uuid),
+  public.report_unpaid(uuid), public.resolve_unpaid(uuid, boolean, text) from public, anon;
+grant execute on function public.set_payout(text), public.payment_info(uuid), public.mark_paid(uuid), public.confirm_received(uuid),
+  public.report_unpaid(uuid), public.resolve_unpaid(uuid, boolean, text) to authenticated;

@@ -1,6 +1,6 @@
 // Avatar colours and wearing items.
 module.exports = async (t) => {
-  const U = await t.user('av_user', { crystal: 500 });
+  const U = await t.user('av_user', { gold: 2000 });
   const X = await t.user('av_other');
   await t.as(U);
   t.eq((await t.one(`select avatar from profiles where id = $1`, [U])).skin, '#f1c27d', 'default skin');

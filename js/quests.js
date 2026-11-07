@@ -8,6 +8,10 @@
   const QSEL = `*,poster:profiles!quests_poster_id_fkey(${PROF}),worker:profiles!quests_worker_id_fkey(${PROF})`;
   const nameOf = (p) => p ? (p.display_name || p.username) : '';
   const urgentLeft = (q) => q.urgent_until && q.status === 'open' ? Math.round((new Date(q.urgent_until) - Date.now()) / 60000) : 0;
+  const baht = (n) => '฿' + Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+  const payOf = (q) => q.family_id ? `${num(q.reward_gold)} G` : baht(q.wage_baht);
+  const PAYM = { promptpay: 'โอนพร้อมเพย์', cash: 'เงินสด', either: 'พร้อมเพย์หรือเงินสด' };
+  const PSTATUS = { due: 'รอจ่ายค่าจ้าง', paid: 'ผู้จ้างแจ้งว่าจ่ายแล้ว', received: 'ได้รับค่าจ้างแล้ว', unpaid_reported: 'แจ้งว่ายังไม่ได้รับเงิน', written_off: 'ผู้จ้างไม่จ่าย (บันทึกแล้ว)' };
   const myRankIn = (occ) => { const c = S.careers.find((x) => x.occupation === occ); return c ? c.rank : null; };
   const rankOrd = (r) => RANKS.indexOf(r);
 
@@ -25,17 +29,18 @@
 
   loaders.quests = async function () {
     const uid = S.user.id;
-    const [b, apps, w, p, h, rv] = await Promise.all([
+    const [b, apps, w, p, h, rv, pd] = await Promise.all([
       sb.from('quests').select(QSEL).eq('status', 'open').eq('moderation', 'approved').is('family_id', null).order('created_at', { ascending: false }).limit(100),
       sb.from('quest_applications').select('status,created_at,quest:quests(' + QSEL + ')').eq('worker_id', uid).eq('status', 'pending').order('created_at', { ascending: false }),
       sb.from('quests').select(QSEL).eq('worker_id', uid).in('status', ['in_progress', 'submitted']).order('updated_at', { ascending: false }),
       sb.from('quests').select(QSEL).eq('poster_id', uid).in('status', ['open', 'in_progress', 'submitted', 'suspended']).order('created_at', { ascending: false }),
       sb.from('quests').select(QSEL).or(`poster_id.eq.${uid},worker_id.eq.${uid}`).in('status', ['completed', 'cancelled']).order('updated_at', { ascending: false }).limit(20),
-      sb.from('reviews').select('quest_id').eq('reviewer_id', uid)
+      sb.from('reviews').select('quest_id').eq('reviewer_id', uid),
+      sb.from('quests').select(QSEL).or(`poster_id.eq.${uid},worker_id.eq.${uid}`).eq('status', 'completed').in('payment_status', ['due', 'paid', 'unpaid_reported']).order('completed_at', { ascending: false })
     ]);
     if (b.error) throw b.error;
     S.board = b.data || [];
-    S.mine = { applied: (apps.data || []).map((a) => a.quest).filter(Boolean), working: w.data || [], posted: p.data || [], history: h.data || [] };
+    S.mine = { pay: pd.data || [], applied: (apps.data || []).map((a) => a.quest).filter(Boolean), working: w.data || [], posted: p.data || [], history: h.data || [] };
     S.myReviews = new Set((rv.data || []).map((r) => r.quest_id));
   };
 
@@ -46,6 +51,7 @@
     let right = '';
     if (ctx === 'board') { const f = fitOf(q); right = f.ok ? `<span class="btn ${urgent ? 'urgent' : 'action'} sm">${q.instant ? 'รับทันที' : 'ดูและสมัคร'}</span>` : `<span class="small muted">${esc(f.text)}</span>`; }
     else if (ctx === 'posted' && q.status === 'open') right = `<span class="small" style="font-weight:600;color:var(--teal-ink)">${q.applicant_count} คนสมัคร</span>`;
+    else if (q.status === 'completed' && ['due', 'paid', 'unpaid_reported'].includes(q.payment_status)) right = `<span class="small" style="font-weight:600;color:var(--danger-ink)">${PSTATUS[q.payment_status]}</span>`;
     else if (ctx === 'history' && q.status === 'completed' && !S.myReviews.has(q.id)) right = '<span class="btn primary sm">ให้รีวิว</span>';
     else right = `<span class="small" style="font-weight:600;color:var(--ink-soft)">${esc(q.dispute_open ? 'มีข้อพิพาท' : QSTATUS[q.status])}</span>`;
     return `<button type="button" class="card q${urgent ? ' is-urgent' : ''}" data-quest="${q.id}">
@@ -58,7 +64,7 @@
       <h3>${esc(q.title)}</h3>
       <span class="small muted">${ctx === 'board' || ctx === 'applied' ? esc(nameOf(q.poster)) + ' · ' + rating(q.poster && q.poster.poster_rating_sum, q.poster && q.poster.poster_rating_count) + ' · ' : ''}ประมาณ ${hours(q.est_minutes)}${q.due_at ? ' · ส่งภายใน ' + when(q.due_at) : ''}</span>
       <div class="foot dash">
-        <div><span class="gold" style="font-size:18px">${num(q.reward_gold)} G</span> <span class="small muted">+${num(q.reward_exp)} EXP</span></div>
+        <div><span class="gold" style="font-size:18px">${payOf(q)}</span> <span class="small muted">+${num(q.reward_exp)} EXP</span></div>
         ${right}
       </div>
     </button>`;
@@ -85,6 +91,7 @@
   function renderMine() {
     const m = S.mine;
     $('qsub-mine').innerHTML = `
+      ${m.pay.length ? `<div class="section" style="margin-top:14px"><h2 style="font-size:17px">ค่าจ้างที่ต้องจัดการ</h2><div class="grid">${list(m.pay, 'pay', '')}</div></div>` : ''}
       <div class="section" style="margin-top:14px"><h2 style="font-size:17px">งานที่กำลังทำ</h2><div class="grid">${list(m.working, 'working', 'ยังไม่มีงานที่กำลังทำ')}</div></div>
       <div class="section"><h2 style="font-size:17px">งานที่สมัครไว้ · รอผู้โพสต์เลือก</h2><div class="grid">${list(m.applied, 'applied', 'ยังไม่ได้สมัครงาน')}</div></div>
       <div class="section"><h2 style="font-size:17px">เควสต์ที่ฉันโพสต์</h2><div class="grid">${list(m.posted, 'posted', 'ยังไม่ได้โพสต์เควสต์')}</div></div>
@@ -128,7 +135,7 @@
       const urgent = urgentLeft(q) > 0;
       // Approximate area only (about 1 km); the exact pin is shown to the chosen worker.
       L.circle(ll, { radius: 600, color: urgent ? '#b3261e' : '#8a5a0b', fillColor: urgent ? '#b3261e' : '#e8b13a', fillOpacity: 0.25, weight: 2 })
-        .addTo(layer).bindPopup(`<b>${esc(q.title)}</b><br>${num(q.reward_gold)} G · RANK ${esc(q.rank)}<br><a href="#quest-${q.id}">ดูรายละเอียด</a>`);
+        .addTo(layer).bindPopup(`<b>${esc(q.title)}</b><br>${payOf(q)} · RANK ${esc(q.rank)}<br><a href="#quest-${q.id}">ดูรายละเอียด</a>`);
     });
     if (pts.length && !S.myPos) map.fitBounds(pts, { padding: [30, 30], maxZoom: 13 });
   }
@@ -142,7 +149,8 @@
       <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
         <label class="f">อาชีพที่ต้องการ<select name="cat"><option value="general">ทั่วไป (ใครก็รับได้)</option>${occs.map((o) => `<option value="${o.id}">${esc(o.label)}${o.license_required ? ' · ต้องมีใบอนุญาต' : ''}</option>`).join('')}</select></label>
         <label class="f">ขั้นขั้นต่ำของผู้รับ<select name="rank">${RANKS.slice(0, 6).map((r) => `<option value="${r}">${r} · ${RANK_LABEL[r]}</option>`).join('')}</select></label>
-        <label class="f">รางวัล (G) — ล็อกจากกระเป๋าคุณ<input name="gold" type="number" min="1" step="1" required inputmode="numeric"></label>
+        <label class="f">ค่าจ้าง (บาท) — คุณจ่ายให้ผู้รับงานเอง<input name="wage" type="number" min="1" max="100000" step="1" required inputmode="numeric"></label>
+        <label class="f">วิธีจ่ายค่าจ้าง<select name="paym"><option value="either">พร้อมเพย์หรือเงินสด</option><option value="promptpay">โอนพร้อมเพย์</option><option value="cash">เงินสดหน้างาน</option></select></label>
         <label class="f">เวลาทำโดยประมาณ (นาที)<input name="est" type="number" min="10" max="10080" step="5" value="60" required inputmode="numeric"></label>
         <label class="f">ต้องเสร็จภายใน (ไม่บังคับ)<input name="due" type="datetime-local"></label>
         <label class="f">ด่วน (นาที, ไม่บังคับ)<input name="urgent" type="number" min="10" max="1440" step="5" inputmode="numeric" placeholder="เช่น 60"></label>
@@ -167,13 +175,16 @@
     openSheet('โพสต์เควสต์ใหม่', postForm());
     const f = $('postForm'); let pos = null;
     const note = () => {
-      const r = Number(f.elements.gold.value || 0), th = Number(S.settings.review_reward_threshold || 5000), g = Number(S.wallet.gold), fee = Number(S.settings.platform_fee_pct || 0);
-      $('postNote').textContent = r > g ? 'Gold ไม่พอ — มีอยู่ ' + num(g) + ' G (เติมได้ที่กระเป๋า)'
-        : r >= th ? 'รางวัลตั้งแต่ ' + num(th) + ' G ต้องรอผู้ตรวจอนุมัติก่อนขึ้นกระดาน'
-        : r > 0 ? `ผู้รับงานได้ ${num(Math.floor(r * (100 - fee) / 100))} G${fee ? ` (หักค่าธรรมเนียม ${fee}%)` : ''} · ระบบจ่ายให้อัตโนมัติ ${S.settings.auto_release_hours || 72} ชม. หลังส่งงานถ้าคุณไม่ตอบ` : '';
+      const r = Number(f.elements.wage.value || 0), th = Number(S.settings.review_reward_threshold || 5000), g = Number(S.wallet.gold);
+      const fee = Number(S.settings.post_fee_gold || 10) + (f.elements.urgent.value ? Number(S.settings.urgent_fee_gold || 20) : 0);
+      const hr = r * 60 / Math.max(10, Number(f.elements.est.value || 60)), minw = Number(S.settings.career_min_wage_hour || 40);
+      $('postNote').innerHTML = `ค่าลงประกาศ <b>${num(fee)} G</b>${f.elements.urgent.value ? ' (รวมค่าด่วน)' : ''} · มีอยู่ ${num(g)} G${fee > g ? ' — <b style="color:var(--danger-ink)">Gold ไม่พอ เติมได้ที่กระเป๋า</b>' : ''}<br>`
+        + (r >= th ? `ค่าจ้างตั้งแต่ ${baht(th)} ต้องรอผู้ตรวจอนุมัติก่อนขึ้นกระดาน<br>` : '')
+        + (r > 0 && hr < minw ? `ค่าจ้างต่ำกว่า ${baht(minw)}/ชม. — งานนี้จะไม่นับเข้าประวัติอาชีพของผู้รับงาน<br>` : '')
+        + 'แอปไม่ถือเงินค่าจ้าง เมื่องานเสร็จคุณโอนพร้อมเพย์หรือจ่ายเงินสดให้ผู้รับงานโดยตรง';
     };
     const sync = () => { $('locBox').classList.toggle('hidden', f.elements.remote.checked); f.elements.rank.disabled = f.elements.cat.value === 'general'; if (f.elements.cat.value === 'general') f.elements.rank.value = 'F'; };
-    f.elements.gold.oninput = note; f.elements.remote.onchange = sync; f.elements.cat.onchange = sync; sync(); note();
+    f.elements.wage.oninput = note; f.elements.urgent.oninput = note; f.elements.est.oninput = note; f.elements.remote.onchange = sync; f.elements.cat.onchange = sync; sync(); note();
     f.elements.maps.oninput = () => { const p = parseMapsLink(f.elements.maps.value); pos = p || pos; $('locMsg').textContent = p ? `ปักหมุดแล้ว ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}` : f.elements.maps.value ? 'อ่านพิกัดจากลิงก์นี้ไม่ได้ — ลิงก์ย่อ (maps.app.goo.gl) ให้เปิดก่อนแล้วคัดลอกลิงก์เต็ม' : ''; };
     $('useHere').onclick = async () => { try { pos = await geolocate(); f.elements.maps.value = pos.lat.toFixed(6) + ', ' + pos.lng.toFixed(6); $('locMsg').textContent = `ปักหมุดตำแหน่งปัจจุบันแล้ว (แม่นยำ ~${Math.round(pos.acc)} ม.)`; } catch (e) { toast(e.message, true); } };
     f.onsubmit = async (ev) => {
@@ -183,7 +194,7 @@
       $('postSubmit').disabled = true;
       const id = await rpc('post_quest_v2', {
         p_title: f.elements.title.value.trim(), p_description: f.elements.desc.value.trim() || null, p_category: f.elements.cat.value, p_rank: f.elements.rank.value,
-        p_reward_gold: Number(f.elements.gold.value), p_est_minutes: Number(f.elements.est.value), p_due_at: f.elements.due.value ? new Date(f.elements.due.value).toISOString() : null,
+        p_wage_baht: Number(f.elements.wage.value), p_pay_method: f.elements.paym.value, p_est_minutes: Number(f.elements.est.value), p_due_at: f.elements.due.value ? new Date(f.elements.due.value).toISOString() : null,
         p_urgent_minutes: f.elements.urgent.value ? Number(f.elements.urgent.value) : null, p_instant: f.elements.instant.checked, p_remote: remote,
         p_lat: remote ? null : pos.lat, p_lng: remote ? null : pos.lng, p_address: remote ? null : f.elements.addr.value.trim() || null
       }, 'โพสต์เควสต์แล้ว');
@@ -195,7 +206,7 @@
 
   /* ---------- quest detail ---------- */
   async function loadDetail(id) {
-    const [q, loc, apps, ses, msgs, dis, revs, elig] = await Promise.all([
+    const [q, loc, apps, ses, msgs, dis, revs, elig, pay] = await Promise.all([
       sb.from('quests').select(QSEL).eq('id', id).maybeSingle(),
       sb.from('quest_locations').select('*').eq('quest_id', id).maybeSingle(),
       sb.from('quest_applications').select('worker_id,note,status,created_at,w:profiles!quest_applications_worker_id_fkey(' + PROF + ')').eq('quest_id', id).order('created_at'),
@@ -203,9 +214,10 @@
       sb.from('messages').select('*').eq('quest_id', id).order('created_at').limit(200),
       sb.from('disputes').select('*').eq('quest_id', id).order('created_at', { ascending: false }),
       sb.from('reviews').select('*').eq('quest_id', id),
-      sb.rpc('quest_eligibility', { p_quest: id })
+      sb.rpc('quest_eligibility', { p_quest: id }),
+      sb.rpc('payment_info', { p_quest: id })
     ]);
-    return { q: q.data, loc: loc.data, apps: apps.data || [], ses: ses.data || [], msgs: msgs.data || [], dis: dis.data || [], revs: revs.data || [], elig: elig.data };
+    return { q: q.data, loc: loc.data, apps: apps.data || [], ses: ses.data || [], msgs: msgs.data || [], dis: dis.data || [], revs: revs.data || [], elig: elig.data, pay: pay.error ? null : pay.data };
   }
 
   function workerCareerLine(p, occ) { return p ? `Lv.${p.base_level} · ${rating(p.rating_sum, p.rating_count)}` : ''; }
@@ -213,7 +225,7 @@
   function detailHtml(D) {
     const q = D.q, me = S.user.id, isPoster = q.poster_id === me, isWorker = q.worker_id === me, c = CATS[q.category] || CATS.general;
     const myApp = D.apps.find((a) => a.worker_id === me), open = D.ses.find((s) => !s.ended_at), dispute = D.dis.find((d) => d.status === 'open');
-    const fee = Number(S.settings.platform_fee_pct || 0), mins = urgentLeft(q);
+    const mins = urgentLeft(q);
     const parts = [];
 
     parts.push(`<div class="card stack">
@@ -222,14 +234,14 @@
         <span class="small" style="margin-left:auto;font-weight:600">${esc(q.dispute_open ? 'มีข้อพิพาท · รอทีมงานตัดสิน' : QSTATUS[q.status])}</span></div>
       ${q.description ? `<p style="margin:0;white-space:pre-line">${esc(q.description)}</p>` : ''}
       <dl class="kv">
-        <div><dt>รางวัล</dt><dd class="gold" style="font-size:18px">${num(q.reward_gold)} G</dd></div>
+        <div><dt>${q.family_id ? 'รางวัล' : 'ค่าจ้าง'}</dt><dd class="gold" style="font-size:18px">${payOf(q)}</dd></div>
         <div><dt>EXP</dt><dd>+${num(q.reward_exp)}</dd></div>
         <div><dt>เวลาโดยประมาณ</dt><dd>${hours(q.est_minutes)}</dd></div>
         <div><dt>ส่งภายใน</dt><dd>${q.due_at ? when(q.due_at) : 'ไม่กำหนด'}</dd></div>
         <div><dt>ผู้โพสต์</dt><dd>${esc(nameOf(q.poster))} <span class="small muted">${rating(q.poster && q.poster.poster_rating_sum, q.poster && q.poster.poster_rating_count)}</span></dd></div>
         <div><dt>ผู้รับงาน</dt><dd>${q.worker ? esc(nameOf(q.worker)) : q.instant ? 'คนแรกที่กดรับ' : q.applicant_count + ' คนสมัคร'}</dd></div>
       </dl>
-      ${fee && (isWorker || isPoster) ? `<span class="small muted">ผู้รับงานได้สุทธิ ${num(Math.floor(q.reward_gold * (100 - fee) / 100))} G หลังหักค่าธรรมเนียม ${fee}%</span>` : ''}
+      ${q.family_id ? '' : `<span class="small muted">จ่ายค่าจ้างโดยตรง: ${PAYM[q.pay_method]} · แอปไม่ถือเงินค่าจ้าง</span>`}
     </div>`);
 
     // Location: approximate area for everyone, exact pin for the parties.
@@ -286,11 +298,33 @@
       <button class="btn primary" data-a="submit" ${open || !D.ses.length ? 'disabled' : ''}>ส่งงาน</button>
       <button class="btn sec" data-a="abandon">คืนงาน</button>
       ${open || !D.ses.length ? '<span class="small muted">เช็กอินและเช็กเอาต์อย่างน้อย 1 ครั้งก่อนส่งงาน</span>' : ''}</div>`);
-    if (isWorker && q.status === 'submitted') parts.push(`<div class="card small">ส่งงานแล้ว — ถ้าผู้โพสต์ไม่ตอบ ระบบจะจ่ายให้อัตโนมัติ ${q.auto_release_at ? when(q.auto_release_at) : ''}</div>`);
+    if (isWorker && q.status === 'submitted') parts.push(`<div class="card small">ส่งงานแล้ว — ถ้าผู้โพสต์ไม่ตอบ ระบบจะปิดงานให้อัตโนมัติ ${q.auto_release_at ? when(q.auto_release_at) : ''} แล้วผู้โพสต์ต้องจ่ายค่าจ้าง</div>`);
     if (isPoster && q.status === 'submitted' && !q.dispute_open) parts.push(`<div class="card stack" style="border-color:var(--gold-500)"><b>ผู้รับงานส่งงานแล้ว</b>
-      <span class="small muted">ตรวจงานแล้วกดยืนยัน หรือเปิดข้อพิพาทถ้ามีปัญหา · ระบบจะจ่ายอัตโนมัติ ${q.auto_release_at ? when(q.auto_release_at) : ''}</span>
-      <button class="btn primary" data-a="confirm">ยืนยันงานเสร็จ · จ่าย ${num(q.reward_gold)} G</button></div>`);
+      <span class="small muted">ตรวจงานแล้วกดยืนยัน หรือเปิดข้อพิพาทถ้ามีปัญหา · ระบบจะปิดงานให้อัตโนมัติ ${q.auto_release_at ? when(q.auto_release_at) : ''}</span>
+      <button class="btn primary" data-a="confirm">ยืนยันงานเสร็จ${q.family_id ? ` · จ่าย ${num(q.reward_gold)} G` : ''}</button></div>`);
     if (isPoster && q.status === 'in_progress' && !q.dispute_open) parts.push(`<button class="btn sec" data-a="cancel">ยกเลิกงาน${q.due_at && new Date(q.due_at) < Date.now() ? ' (ผู้รับงานไม่มา/เลยกำหนด)' : ''}</button>`);
+
+    // Wage paid straight from poster to worker.
+    const P = D.pay;
+    if (P && P.status && P.status !== 'none' && (isPoster || isWorker)) {
+      const amt = Number(P.amount || 0), canQR = isPoster && P.promptpay && q.pay_method !== 'cash';
+      const late = q.completed_at && Date.now() - new Date(q.completed_at) > 864e5;
+      parts.push(`<div class="card stack" style="border:2px solid ${P.status === 'received' ? 'var(--teal-600)' : 'var(--gold-500)'}">
+        <div class="row between"><b>ค่าจ้าง ${baht(amt)}</b><span class="small" style="font-weight:600">${PSTATUS[P.status]}</span></div>
+        ${isPoster && ['due', 'unpaid_reported'].includes(P.status) ? `
+          ${canQR ? `<div class="stack" style="align-items:center;text-align:center"><div class="qr">${App.qrSvg(App.promptpayPayload(P.promptpay, amt))}</div>
+            <span class="small">สแกนด้วยแอปธนาคาร · พร้อมเพย์ ${esc(P.promptpay.replace(/(\d{3})\d+(\d{3})/, '$1•••$2'))}${P.name_hint ? ' · ชื่อบัญชีควรเป็น <b>' + esc(P.name_hint) + '</b>' : ''}</span></div>`
+            : `<span class="small">${q.pay_method === 'cash' ? 'จ่ายเงินสดให้ผู้รับงานโดยตรง' : 'ผู้รับงานยังไม่ได้ตั้งพร้อมเพย์ — จ่ายเงินสด หรือขอเลขในแชต'}</span>`}
+          <button class="btn primary" data-a="paid">ฉันจ่ายค่าจ้างแล้ว</button>
+          <span class="small muted">แอปไม่ได้รับหรือถือเงินค่าจ้าง ถ้าไม่จ่าย ผู้รับงานแจ้งทีมงานได้ และคุณจะโพสต์งานใหม่ไม่ได้</span>` : ''}
+        ${isWorker && ['due', 'paid', 'unpaid_reported'].includes(P.status) ? `
+          <span class="small">${P.status === 'paid' ? 'ผู้จ้างแจ้งว่าจ่ายแล้ว ตรวจยอดในบัญชีหรือเงินสดแล้วกดยืนยัน' : 'รอผู้จ้างจ่ายให้คุณโดยตรง'}</span>
+          <div class="row"><button class="btn action" data-a="received">ได้รับเงินแล้ว</button>
+          ${P.status !== 'unpaid_reported' ? `<button class="btn sec" data-a="unpaid" ${late ? '' : 'disabled'}>ยังไม่ได้รับเงิน</button>` : ''}</div>
+          ${!late && P.status !== 'unpaid_reported' ? '<span class="small muted">แจ้งว่ายังไม่ได้รับได้หลังงานเสร็จ 24 ชม.</span>' : ''}` : ''}
+        ${P.status === 'received' ? `<span class="small muted">ยืนยันรับเงินเมื่อ ${when(P.received_at)}</span>` : ''}
+      </div>`);
+    }
 
     // Disputes.
     if (dispute) parts.push(`<div class="card stack" style="border-color:var(--danger)"><b>ข้อพิพาท · รอทีมงานตัดสิน</b>
@@ -366,12 +400,15 @@
         if (reason && reason.trim().length >= 3) await rpc('report_quest', { p_quest: q.id, p_reason: reason.trim() }, 'ส่งรายงานแล้ว ทีมงานจะตรวจสอบ');
       }
       if (a === 'choose' && confirm('เลือกผู้สมัครคนนี้? ผู้สมัครคนอื่นจะได้รับแจ้งว่าไม่ได้งาน')) await rpc('choose_worker', { p_quest: q.id, p_worker: b.dataset.w }, 'เลือกผู้รับงานแล้ว');
-      if (a === 'cancel' && confirm(q.status === 'open' ? 'ยกเลิกเควสต์นี้? Gold ที่ล็อกไว้จะคืนเข้ากระเป๋า' : 'ยกเลิกงานที่มอบไปแล้ว? ทำได้เฉพาะเมื่อผู้รับงานยังไม่เคยเช็กอิน — ถ้าเลยกำหนดจะนับว่าผู้รับงานไม่มา')) await rpc('cancel_quest', { p_quest: q.id }, 'ยกเลิกแล้ว คืน Gold ให้แล้ว');
+      if (a === 'cancel' && confirm(q.status === 'open' ? (q.family_id ? 'ยกเลิกเควสต์นี้? Gold ที่ล็อกไว้จะคืนเข้ากระเป๋า' : 'ยกเลิกเควสต์นี้? ค่าลงประกาศไม่คืน') : 'ยกเลิกงานที่มอบไปแล้ว? ทำได้เฉพาะเมื่อผู้รับงานยังไม่เคยเช็กอิน — ถ้าเลยกำหนดจะนับว่าผู้รับงานไม่มา')) await rpc('cancel_quest', { p_quest: q.id }, 'ยกเลิกแล้ว');
       if (a === 'checkin') { toast('กำลังหาตำแหน่ง…'); const p = await here(q); const photo = await sessionPhoto(q); await rpc('check_in', { p_quest: q.id, p_lat: p.lat, p_lng: p.lng, p_photo: photo }, 'เช็กอินแล้ว เริ่มนับเวลา'); }
       if (a === 'checkout') { toast('กำลังหาตำแหน่ง…'); const p = await here(q).catch(() => ({ lat: null, lng: null })); const photo = await sessionPhoto(q); await rpc('check_out', { p_quest: q.id, p_lat: p.lat, p_lng: p.lng, p_photo: photo }, (m) => 'เช็กเอาต์แล้ว · ' + hours(m)); }
       if (a === 'submit' && confirm('ส่งงานให้ผู้โพสต์ตรวจ?')) await rpc('submit_quest', { p_quest: q.id }, 'ส่งงานแล้ว รอผู้โพสต์ยืนยัน');
       if (a === 'abandon' && confirm('คืนงานนี้? เควสต์จะกลับขึ้นกระดาน และนับในประวัติของคุณ')) { const ok = await rpc('abandon_quest', { p_quest: q.id }, 'คืนงานแล้ว'); if (ok) closeSheet(); return; }
-      if (a === 'confirm' && confirm('ยืนยันว่างานเสร็จ? Gold ที่ล็อกไว้จะโอนให้ผู้รับงานทันที')) await rpc('confirm_quest', { p_quest: q.id }, 'โอนรางวัลแล้ว — อย่าลืมรีวิว');
+      if (a === 'confirm' && confirm(q.family_id ? 'ยืนยันว่างานเสร็จ? Gold ที่ล็อกไว้จะโอนให้ลูกทันที' : `ยืนยันว่างานเสร็จ? ต่อไปคุณต้องจ่ายค่าจ้าง ${baht(q.wage_baht)} ให้ผู้รับงานโดยตรง`)) await rpc('confirm_quest', { p_quest: q.id }, q.family_id ? 'โอนรางวัลแล้ว' : 'ปิดงานแล้ว — จ่ายค่าจ้างได้ด้านล่าง');
+      if (a === 'paid' && confirm('ยืนยันว่าคุณจ่ายค่าจ้างให้ผู้รับงานแล้ว?')) await rpc('mark_paid', { p_quest: q.id }, 'แจ้งผู้รับงานแล้ว');
+      if (a === 'received' && confirm('ยืนยันว่าได้รับค่าจ้างครบแล้ว?')) await rpc('confirm_received', { p_quest: q.id }, 'ขอบคุณ — อย่าลืมรีวิวผู้จ้าง');
+      if (a === 'unpaid' && confirm('แจ้งทีมงานว่ายังไม่ได้รับค่าจ้าง? ผู้จ้างจะโพสต์งานใหม่ไม่ได้จนกว่าเรื่องจะจบ')) await rpc('report_unpaid', { p_quest: q.id }, 'แจ้งทีมงานแล้ว');
       if (a === 'evidence') {
         const f = $('evFile').files[0]; if (!f) return toast('เลือกไฟล์ก่อน', true);
         const path = await upload('quest-media', `${q.id}/${S.user.id}`, f, 'evidence');

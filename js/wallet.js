@@ -38,21 +38,25 @@
     $('view-wallet').innerHTML = `
       <div class="section"><div class="grid" style="align-items:stretch">
         <div class="balance">
-          <span class="small" style="color:var(--on-wood-muted)">Gold · ใช้จ้างงานในแอป ถอนไม่ได้</span>
+          <span class="small" style="color:var(--on-wood-muted)">Gold · เงินในแอป ใช้ซื้อทุกอย่าง ถอนไม่ได้</span>
           <span class="big">${num(w.gold)} G</span>
           <span class="small" style="color:var(--on-wood-muted)">${gr > 0 ? 'ราคาเติม 1 G = ' + gr + ' บาท' : 'ยังไม่เปิดขาย Gold'}</span>
-          <span class="small" style="color:var(--on-wood-muted)">ล็อกไว้ในงานที่จ้างอยู่ ${num(w.gold_locked)} G</span>
+          <span class="small" style="color:var(--on-wood-muted)">${Number(w.gold_locked) ? 'ล็อกไว้ในเควสต์ครอบครัว ' + num(w.gold_locked) + ' G' : 'ใช้ลงประกาศงาน ซื้อของ อาหาร และมอบเควสต์ให้ลูก'}</span>
           <div class="row" style="margin-top:8px"><button class="btn primary" data-w="topup-gold" ${topupOpen('gold') ? '' : 'disabled'}>เติม Gold</button></div>
         </div>
         <div class="balance" style="border-color:var(--crystal)">
-          <span class="small" style="color:var(--on-wood-muted)">Crystal · ซื้อจากเรา ให้คนอื่นได้ ถอนไม่ได้</span>
+          <span class="small" style="color:var(--on-wood-muted)">Crystal · สกุลพิเศษ ซื้อของรุ่นจำกัด ให้คนอื่นได้ ถอนไม่ได้</span>
           <span class="big" style="color:var(--crystal)">${num(w.crystal)} C</span>
-          <span class="small" style="color:var(--on-wood-muted)">${cr > 0 ? '1 C = ' + cr + ' บาท' : 'ยังไม่เปิดขาย Crystal'} · ใช้ซื้อของพิเศษในร้าน</span>
+          <span class="small" style="color:var(--on-wood-muted)">${cr > 0 ? '1 C = ' + cr + ' บาท' : 'ยังไม่เปิดขาย Crystal'} · ใช้ซื้อของพิเศษรุ่นจำกัด</span>
           <div class="row" style="margin-top:8px"><button class="btn primary" data-w="topup-crystal" ${topupOpen('crystal') ? '' : 'disabled'} style="background:var(--crystal)">เติม Crystal</button><button class="btn sec" data-w="send">ส่งให้คนอื่น</button></div>
         </div>
       </div>
       ${!topupOpen('gold') && !topupOpen('crystal') ? '<p class="small muted" style="margin:0">ยังไม่เปิดเติมเงิน — ทีมงานกำลังตั้งค่าพร้อมเพย์</p>' : ''}
       </div>
+      <div class="section"><form class="card stack" id="payoutForm"><b>รับค่าจ้างทางพร้อมเพย์</b>
+        <span class="small muted">ผู้จ้างจะเห็น QR ที่มียอดเงินเมื่องานของคุณเสร็จ เงินเข้าบัญชีคุณตรง ไม่ผ่านแอป · เห็นเฉพาะผู้จ้างงานที่คุณทำเสร็จ</span>
+        <div class="row" style="align-items:flex-end"><label class="f" style="flex:1 1 200px">เบอร์ 10 หลัก หรือเลขบัตรประชาชน 13 หลัก<input name="pp" inputmode="numeric" autocomplete="off" value="${esc((S.priv && S.priv.promptpay_id) || '')}"></label>
+        <button class="btn sec" type="submit">บันทึก</button></div></form></div>
       ${openOrders.length ? `<div class="section"><h2 style="font-size:17px">คำสั่งเติมเงินที่ค้างอยู่</h2><div class="card" style="padding:4px 14px">${openOrders.map((o) => `<div class="tx" style="flex-wrap:wrap">
         <div style="flex:1 1 180px;min-width:0"><b>${num(o.units)} ${o.currency === 'gold' ? 'G' : 'C'}</b> · ${baht(o.amount_thb)} บาท<div class="small muted">รหัส ${esc(o.ref_code)} · ${OSTATUS[o.status]} · ${ago(o.created_at)}</div></div>
         ${o.status === 'pending' ? `<button class="btn action sm" data-order="${o.id}">ชำระ/แนบสลิป</button><button class="btn sec sm" data-ocancel="${o.id}">ยกเลิก</button>` : ''}</div>`).join('')}</div></div>` : ''}
@@ -65,19 +69,18 @@
           return `<article class="card stack${t.glow ? ' tier-glow' : ''} tier-${esc(t.id)}" style="gap:6px;border-color:${own && own.equipped ? 'var(--teal-600)' : t.color};border-width:2px">
             <div class="row between"><span class="row" style="gap:4px">${tierTag(i.tier)}<span class="tag" style="background:var(--parchment-200);color:var(--ink-soft)">${KIND[i.kind]}${i.slot ? ' · ' + i.slot : ''}</span></span>${i.kind === 'frame' && i.data && i.data.color ? `<span aria-hidden="true" style="width:18px;height:18px;border-radius:50%;border:3px solid ${esc(i.data.color)}"></span>` : ''}</div>
             <b>${esc(i.name)}</b><span class="small muted">${esc(i.description || '')}</span>
-            <div class="row between dash" style="margin-top:auto"><span class="gold" style="color:var(--crystal-ink)">${i.price_crystal ? num(i.price_crystal) + ' C' : 'รางวัล'}</span>
-              ${!own ? (i.active && i.price_crystal ? `<button class="btn primary sm" data-buy="${i.id}">ซื้อ</button>` : '') : i.kind === 'boost' ? '<span class="small" style="color:var(--teal-ink)">ใช้งานอยู่</span>'
+            <div class="row between dash" style="margin-top:auto"><span><span class="gold" style="${i.currency === 'crystal' ? 'color:var(--crystal-ink)' : ''}">${i.price ? num(i.price) + (i.currency === 'crystal' ? ' C' : ' G') : 'รางวัล'}</span>${i.stock ? `<span class="small muted"> · เหลือ ${num(Math.max(0, i.stock - i.sold))}/${num(i.stock)}</span>` : ''}</span>
+              ${!own ? (i.active && i.price && !(i.stock && i.sold >= i.stock) ? `<button class="btn primary sm" data-buy="${i.id}">ซื้อ</button>` : '') : i.kind === 'boost' ? '<span class="small" style="color:var(--teal-ink)">ใช้งานอยู่</span>'
                 : `<button class="btn ${own.equipped ? 'sec' : 'action'} sm" data-equip="${i.id}" data-on="${own.equipped ? 0 : 1}">${own.equipped ? 'ถอด' : 'ใส่'}</button>`}</div></article>`;
         }).join('') || '<div class="empty">ร้านยังไม่เปิด</div>'}</div></div>
       <div class="section"><h2 style="font-size:17px">ความเคลื่อนไหว</h2><div class="card" style="padding:4px 14px">${S.tx.length ? S.tx.map(txRow).join('') : '<div class="empty">ยังไม่มีรายการ</div>'}</div></div>
       <div class="section"><details class="card"><summary style="cursor:pointer;font-weight:600">ระบบเงินทำงานอย่างไร</summary>
         <ul class="small" style="margin:10px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px">
-          <li><b>Gold</b> ได้จากการทำงาน หรือเติมด้วยพร้อมเพย์ ใช้จ้างงาน สมทบกองทุนกิลด์ และมอบเควสต์ให้ลูก · <b>ถอนเป็นเงินไม่ได้</b> และแลกคืนไม่ได้</li>
-          <li>เมื่อโพสต์งาน Gold จะถูก <b>ล็อก</b> ไว้ทันที ผู้รับงานได้เมื่อผู้โพสต์ยืนยัน หรือระบบจ่ายอัตโนมัติ ${S.settings.auto_release_hours || 72} ชม. หลังส่งงาน · ยกเลิกก่อนเริ่มงานได้คืนเต็ม</li>
-          <li>มีปัญหา เปิดข้อพิพาทได้ Gold จะพักไว้จนทีมงานตัดสินแบ่งเป็นเปอร์เซ็นต์</li>
-          <li><b>Crystal</b> ซื้อจากเราเท่านั้น ส่งให้ลูกหลานหรือใครก็ได้ (วันละไม่เกิน ${num(S.settings.crystal_daily_transfer_max || 5000)} C) <b>ถอนเป็นเงินไม่ได้</b> ใช้ซื้อของพิเศษในร้าน</li>
+          <li><b>Gold</b> เงินในแอป (คล้าย Robux) เติมด้วยพร้อมเพย์ ใช้ลงประกาศงาน ซื้อของ อาหาร และมอบเควสต์ให้ลูก · <b>ถอนไม่ได้</b></li>
+          <li><b>Crystal</b> สกุลพิเศษ ใช้ซื้อของรุ่นจำกัด ส่งให้ลูกหลานหรือใครก็ได้ (วันละไม่เกิน ${num(S.settings.crystal_daily_transfer_max || 5000)} C) · <b>ถอนไม่ได้</b></li>
+          <li><b>ค่าจ้างงานเป็นเงินบาทจริง</b> ผู้จ้างจ่ายให้ผู้รับงานโดยตรงด้วย QR พร้อมเพย์หรือเงินสด แอปไม่ได้รับหรือถือเงินค่าจ้าง</li>
+          <li>ลงประกาศงานใช้ ${num(S.settings.post_fee_gold || 10)} G (ด่วน +${num(S.settings.urgent_fee_gold || 20)} G) · ผู้จ้างที่ไม่จ่ายค่าจ้างจะโพสต์งานใหม่ไม่ได้</li>
           <li>เติมเงิน: สร้างคำสั่ง → สแกน QR พร้อมเพย์ตามยอด → แนบสลิป → ทีมการเงินตรวจแล้วเติมให้</li>
-          ${Number(S.settings.platform_fee_pct || 0) ? `<li>ค่าธรรมเนียมแพลตฟอร์ม ${S.settings.platform_fee_pct}% หักจากรางวัลตอนจ่ายผู้รับงาน</li>` : '<li>ตอนนี้ยังไม่เก็บค่าธรรมเนียมแพลตฟอร์ม</li>'}
         </ul></details></div>`;
   }
   renderers.push(renderWallet);
@@ -143,6 +146,11 @@
     };
   }
 
+  $('view-wallet').addEventListener('submit', async (ev) => {
+    if (ev.target.id !== 'payoutForm') return; ev.preventDefault();
+    if (S.profile.kyc_status !== 'verified') { toast('ต้องยืนยันตัวตนก่อน', true); return App.openKyc(); }
+    await rpc('set_payout', { p_promptpay: ev.target.elements.pp.value }, 'บันทึกพร้อมเพย์แล้ว');
+  });
   $('view-wallet').addEventListener('click', async (ev) => {
     const b = ev.target.closest('button'); if (!b) return;
     const w = b.dataset.w;
@@ -151,7 +159,7 @@
     if (w === 'send') openSendCrystal();
     if (b.dataset.order) { const o = S.orders.find((x) => x.id === b.dataset.order); if (o) showPay(o); }
     if (b.dataset.ocancel && confirm('ยกเลิกคำสั่งเติมเงินนี้?')) await rpc('cancel_topup', { p_order: b.dataset.ocancel }, 'ยกเลิกแล้ว');
-    if (b.dataset.buy) { const i = S.shop.find((x) => x.id === b.dataset.buy); if (i && confirm(`ซื้อ ${i.name} ราคา ${num(i.price_crystal)} C?`)) { b.disabled = true; await rpc('buy_item', { p_item: i.id }, 'ซื้อแล้ว'); } }
+    if (b.dataset.buy) { const i = S.shop.find((x) => x.id === b.dataset.buy); if (i && confirm(`ซื้อ ${i.name} ราคา ${num(i.price)} ${i.currency === 'crystal' ? 'Crystal' : 'Gold'}?`)) { b.disabled = true; await rpc('buy_item', { p_item: i.id }, 'ซื้อแล้ว'); } }
     if (b.dataset.equip) { b.disabled = true; await rpc('equip_item', { p_item: b.dataset.equip, p_on: b.dataset.on === '1' }, b.dataset.on === '1' ? 'ใส่แล้ว' : 'ถอดแล้ว'); }
   });
 

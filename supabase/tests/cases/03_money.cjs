@@ -44,16 +44,21 @@ module.exports = async (t) => {
   await t.as(owner); await t.q(`select set_setting('crystal_daily_transfer_max', '50')`);
   await t.as(A); await t.throws(`select transfer_crystal('mn_bob', 30, null)`, 'daily transfer limit', 'lowered limit applies to the day total');
 
-  // shop
+  // shop: everyday items in Gold, limited specials in Crystal
   await t.q(`select buy_item('hat_straw')`);
-  t.eq(await t.one(`select crystal from wallets where user_id = $1`, [A]), 31, 'item price deducted');
+  t.eq(await t.one(`select gold from wallets where user_id = $1`, [A]), 110, 'gold item price deducted (500 - 390)');
   await t.throws(`select buy_item('hat_straw')`, 'already owned', 'no double buy');
   await t.throws(`select buy_item('title_monthly_hero')`, 'item not available', 'reward-only items are not for sale');
+  await t.throws(`select buy_item('title_hardworker')`, 'not enough gold', 'gold overspend blocked');
+  await t.admin(); await t.q(`update wallets set gold = 5000 where user_id = $1`, [A]); await t.as(A);
   await t.q(`select buy_item('title_hardworker')`);
   await t.q(`select equip_item('title_hardworker', true)`);
   t.eq(await t.one(`select title from profiles where id = $1`, [A]), 'ขยันไม่มีวันหยุด', 'title equipped');
-  await t.throws(`select buy_item('boost_personal_slots')`, 'not enough crystal', 'cannot overspend');
-  await t.admin(); await t.q(`update wallets set crystal = 100 where user_id = $1`, [A]);
+  await t.throws(`select buy_item('wrench_gold')`, 'not enough crystal', 'crystal special needs crystal');
+  await t.admin(); await t.q(`update wallets set crystal = 200 where user_id = $1`, [A]); await t.q(`update shop_items set stock = 1 where id = 'wrench_gold'`);
+  await t.as(A); await t.q(`select buy_item('wrench_gold')`);
+  t.eq(await t.one(`select crystal from wallets where user_id = $1`, [A]), 51, 'crystal price deducted');
+  await t.as(B); await t.throws(`select buy_item('wrench_gold')`, 'sold out', 'limited stock runs out');
   await t.as(A); await t.q(`select buy_item('boost_personal_slots')`);
   t.eq(await t.one(`select extra_personal_slots from profiles where id = $1`, [A]), 2, 'boost adds personal slots');
 

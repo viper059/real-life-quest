@@ -84,16 +84,18 @@ begin
   for r in select id, poster_id, title from quests
             where status = 'submitted' and not dispute_open and auto_release_at < now() for update skip locked loop
     perform _settle(r.id, 100, 'auto release');
-    perform _notify(r.poster_id, 'quest', 'ระบบจ่ายเงินให้ผู้รับงานอัตโนมัติ', r.title, 'index.html#quest-' || r.id);
+    perform _notify(r.poster_id, 'quest', 'ระบบปิดงานให้อัตโนมัติ — อย่าลืมจ่ายค่าจ้าง', r.title, 'index.html#quest-' || r.id);
     v_released := v_released + 1;
   end loop;
   -- 2. open quests nobody took before the due time go back to the poster
   for r in select * from quests where status = 'open' and due_at < now() for update skip locked loop
-    update wallets set gold = gold + r.reward_gold, gold_locked = gold_locked - r.reward_gold, updated_at = now() where user_id = r.poster_id;
+    if r.reward_gold > 0 then
+      update wallets set gold = gold + r.reward_gold, gold_locked = gold_locked - r.reward_gold, updated_at = now() where user_id = r.poster_id;
+      perform _ledger(r.poster_id, 'quest_refund', r.reward_gold, -r.reward_gold, r.id, null, 'expired');
+    end if;
     update quests set status = 'cancelled', updated_at = now() where id = r.id;
     update quest_applications set status = 'rejected' where quest_id = r.id and status = 'pending';
-    perform _ledger(r.poster_id, 'quest_refund', r.reward_gold, -r.reward_gold, r.id, null, 'expired');
-    perform _notify(r.poster_id, 'quest', 'เควสต์หมดเวลา — คืน Gold แล้ว', r.title, 'index.html#wallet');
+    perform _notify(r.poster_id, 'quest', 'เควสต์หมดเวลา ไม่มีคนรับ', r.title, 'index.html#quest-' || r.id);
     v_expired := v_expired + 1;
   end loop;
   -- 3. guild claims whose vote window closed without a majority are rejected

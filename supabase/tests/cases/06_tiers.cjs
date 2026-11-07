@@ -1,6 +1,6 @@
 // Rarity tiers for items: eight defined, only Common–Epic open; job cards untouched.
 module.exports = async (t) => {
-  const U = await t.user('tier_user', { kyc: true, crystal: 2000 });
+  const U = await t.user('tier_user', { kyc: true, crystal: 2000, gold: 5000 });
   const shop = await t.user('tier_shop', { staff: 'owner', kyc: true });
 
   await t.admin();
@@ -17,10 +17,10 @@ module.exports = async (t) => {
 
   await t.as(shop);
   await t.throws(`select set_shop_item_tier('frame_jade', 'legend')`, 'tier not open yet', 'cannot sell a legend item');
-  await t.q(`select save_shop_item('frame_jade', 'กรอบหยก', 'frame', null, 99, null, false)`);
+  await t.q(`select save_shop_item('frame_jade', 'กรอบหยก', 'frame', null, 99, 'gold', null, null, false)`);
   await t.q(`select set_shop_item_tier('frame_jade', 'legend')`);
   t.eq(await t.one(`select tier from shop_items where id = 'frame_jade'`), 'legend', 'staff can draft an inactive legend item');
-  await t.throws(`select save_shop_item('frame_jade', 'กรอบหยก', 'frame', null, 99, null, true)`, 'tier not open yet', 'draft cannot go on sale');
+  await t.throws(`select save_shop_item('frame_jade', 'กรอบหยก', 'frame', null, 99, 'gold', null, null, true)`, 'tier not open yet', 'draft cannot go on sale');
   await t.admin();
   await t.throws(`select _give_item('${U}', 'frame_jade')`, 'tier not open yet', 'closed tiers cannot be given as rewards');
   t.eq(await t.one(`select _give_item($1, 'boost_personal_slots')`, [U]), true, 'boost still grants');

@@ -21,8 +21,8 @@ revoke execute on function public.set_avatar(text, text, text, text, text) from 
 grant execute on function public.set_avatar(text, text, text, text, text) to authenticated;
 
 -- More wearables (all within the open tiers).
-insert into public.shop_items (id, name, kind, slot, price_crystal, description, data, active, sort, tier) values
-  ('cap_basic',     'หมวกแก๊ป',        'costume', 'head', 19, 'ชุดแต่งตัว ช่องหมวก', '{"color":"#1f6f6b"}', true, 15, 'common'),
-  ('helmet_safety', 'หมวกเซฟตี้',       'costume', 'head', 59, 'หมวกนิรภัยสำหรับช่าง', '{"color":"#e8b13a"}', true, 16, 'uncommon'),
-  ('apron_work',    'ผ้ากันเปื้อนช่าง',  'costume', 'body', 39, 'ชุดแต่งตัว ช่องเสื้อ', '{"color":"#6b4a2a"}', true, 17, 'common'),
-  ('glasses_round', 'แว่นกลมนักปราชญ์', 'costume', 'acc',  49, 'ของประดับ ช่องเครื่องประดับ', '{"color":"#2a1b11"}', true, 18, 'uncommon');
+insert into public.shop_items (id, name, kind, slot, price, currency, stock, description, data, active, sort, tier) values
+  ('cap_basic',     'หมวกแก๊ป',        'costume', 'head', 190, 'gold', null, 'ชุดแต่งตัว ช่องหมวก', '{"color":"#1f6f6b"}', true, 15, 'common'),
+  ('helmet_safety', 'หมวกเซฟตี้',       'costume', 'head', 590, 'gold', null, 'หมวกนิรภัยสำหรับช่าง', '{"color":"#e8b13a"}', true, 16, 'uncommon'),
+  ('apron_work',    'ผ้ากันเปื้อนช่าง',  'costume', 'body', 390, 'gold', null, 'ชุดแต่งตัว ช่องเสื้อ', '{"color":"#6b4a2a"}', true, 17, 'common'),
+  ('glasses_round', 'แว่นกลมนักปราชญ์', 'costume', 'acc',  490, 'gold', null, 'ของประดับ ช่องเครื่องประดับ', '{"color":"#2a1b11"}', true, 18, 'uncommon');

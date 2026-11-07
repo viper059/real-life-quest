@@ -32,11 +32,11 @@ update public.shop_items set tier = case id
   when 'frame_jade' then 'uncommon' when 'jacket_explorer' then 'uncommon' when 'boots_travel' then 'uncommon'
   when 'charm_luck' then 'uncommon' when 'boost_personal_slots' then 'uncommon'
   when 'wrench_gold' then 'epic' when 'title_monthly_hero' then 'epic' else 'common' end;
-insert into public.shop_items (id, name, kind, slot, price_crystal, description, data, active, sort, tier) values
-  ('frame_epic',    'กรอบอเมทิสต์',     'frame',   null,   199, 'กรอบโปรไฟล์ระดับอีปิก', '{"color":"#6a3fb5"}', true, 11, 'epic'),
-  ('cape_epic',     'ผ้าคลุมนักเดินทาง', 'costume', 'body', 249, 'ชุดแต่งตัวระดับอีปิก ช่องเสื้อ', '{}', true, 12, 'epic'),
-  ('gloves_worker', 'ถุงมือช่าง',        'costume', 'tool',  49, 'ของใช้ ช่องเครื่องมือ', '{}', true, 13, 'common'),
-  ('bag_courier',   'กระเป๋าส่งของ',     'costume', 'acc',   89, 'ของใช้ ช่องเครื่องประดับ', '{}', true, 14, 'uncommon');
+insert into public.shop_items (id, name, kind, slot, price, currency, stock, description, data, active, sort, tier) values
+  ('frame_epic',    'กรอบอเมทิสต์',     'frame',   null,   199, 'crystal', 300, 'กรอบโปรไฟล์ระดับอีปิก รุ่นจำกัด', '{"color":"#6a3fb5"}', true, 11, 'epic'),
+  ('cape_epic',     'ผ้าคลุมนักเดินทาง', 'costume', 'body', 249, 'crystal', 300, 'ชุดระดับอีปิก รุ่นจำกัด ช่องเสื้อ', '{}', true, 12, 'epic'),
+  ('gloves_worker', 'ถุงมือช่าง',        'costume', 'tool', 490, 'gold', null, 'ของใช้ ช่องเครื่องมือ', '{}', true, 13, 'common'),
+  ('bag_courier',   'กระเป๋าส่งของ',     'costume', 'acc',  890, 'gold', null, 'ของใช้ ช่องเครื่องประดับ', '{}', true, 14, 'uncommon');
 
 -- An item in a closed tier can exist (staff may draft it) but cannot be on sale.
 create or replace function public._guard_item_tier()
