@@ -125,7 +125,7 @@ tr.sel td{background:var(--parchment-200)}
   const ERR = [['forbidden', 'บทบาทของคุณไม่มีสิทธิ์ทำสิ่งนี้'], ['second approval must come', 'ผู้อนุมัติคนที่ 2 ต้องเป็นคนละคนกับคนแรก'],
     ['cannot decide your own', 'อนุมัติคำขอของตัวเองไม่ได้'], ['owner permissions are locked', 'สิทธิ์ของเจ้าของระบบแก้ไม่ได้'],
     ['cannot remove the last owner', 'ต้องมีเจ้าของระบบอย่างน้อย 1 คน'], ['withdrawal not open', 'คำขอนี้ถูกตัดสินไปแล้ว'],
-    ['bad rate', 'อัตราต้องเป็นตัวเลข เช่น 0.25'], ['fund too low', 'เงินในกองทุนไม่พอจ่าย'], ['claim not approved', 'เคลมนี้ถูกตัดสินไปแล้ว'], ['must be a whole number', 'ต้องเป็นจำนวนเต็ม'], ['cannot review your own', 'ตรวจคำขอของตัวเองไม่ได้'], ['cannot judge your own', 'ตัดสินงานที่ตัวเองเกี่ยวข้องไม่ได้'], ['not pending', 'รายการนี้ถูกตัดสินไปแล้ว'], ['dispute not open', 'ข้อพิพาทนี้ปิดแล้ว'], ['percent must be', 'เปอร์เซ็นต์ต้องอยู่ระหว่าง 0–100'], ['rank changed since request', 'ขั้นของผู้ใช้เปลี่ยนไปแล้ว'], ['bad promptpay', 'เลขพร้อมเพย์ต้องเป็น 10 หรือ 13 หลัก'], ['out of range', 'ค่าอยู่นอกช่วงที่อนุญาต'], ['tier not open yet', 'ระดับนี้ยังไม่เปิด — ตั้งเป็นปิดขายไว้ก่อน'], ['Invalid login credentials', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง']];
+    ['bad rate', 'อัตราต้องเป็นตัวเลข เช่น 0.25'], ['fund too low', 'เงินในกองทุนไม่พอจ่าย'], ['claim not approved', 'เคลมนี้ถูกตัดสินไปแล้ว'], ['must be a whole number', 'ต้องเป็นจำนวนเต็ม'], ['cannot review your own', 'ตรวจคำขอของตัวเองไม่ได้'], ['cannot judge your own', 'ตัดสินงานที่ตัวเองเกี่ยวข้องไม่ได้'], ['not pending', 'รายการนี้ถูกตัดสินไปแล้ว'], ['dispute not open', 'ข้อพิพาทนี้ปิดแล้ว'], ['percent must be', 'เปอร์เซ็นต์ต้องอยู่ระหว่าง 0–100'], ['rank changed since request', 'ขั้นของผู้ใช้เปลี่ยนไปแล้ว'], ['bad promptpay', 'เลขพร้อมเพย์ต้องเป็น 10 หรือ 13 หลัก'], ['out of range', 'ค่าอยู่นอกช่วงที่อนุญาต'], ['set a rate before opening', 'ใส่อัตราแลกก่อนเปิด'], ['tier not open yet', 'ระดับนี้ยังไม่เปิด — ตั้งเป็นปิดขายไว้ก่อน'], ['Invalid login credentials', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง']];
   const errText = (e) => { const m = (e && e.message) || String(e); const h = ERR.find(([k]) => m.includes(k)); return h ? h[1] : m; };
   let tt; function toast(m, bad) { const t = $('toast'); t.textContent = m; t.classList.toggle('err', !!bad); t.classList.remove('hidden'); clearTimeout(tt); tt = setTimeout(() => t.classList.add('hidden'), 3400); }
 
@@ -356,7 +356,7 @@ tr.sel td{background:var(--parchment-200)}
     S.settings = Object.fromEntries((data || []).map((r) => [r.key, r.value]));
     const L = { crystal_thb_rate: ['ราคา Crystal (บาทต่อ 1 C)', 'เช่น 0.5 — เว้นว่าง = ยังไม่เปิดขาย'], promptpay_id: ['เลขพร้อมเพย์รับเงิน', 'เบอร์ 10 หลัก หรือเลขผู้เสียภาษี 13 หลัก'],
       promptpay_name: ['ชื่อบัญชีพร้อมเพย์', 'แสดงให้ผู้ใช้ตรวจก่อนโอน'], topup_min_thb: ['เติมขั้นต่ำ (บาท)', ''], crystal_daily_transfer_max: ['ส่ง Crystal สูงสุดต่อวัน (C)', ''],
-      personal_exp_cap: ['EXP เป้าหมายส่วนตัวสูงสุดต่อวัน', ''], post_fee_gold: ['ค่าลงประกาศงาน (G)', 'รายได้แพลตฟอร์ม'], urgent_fee_gold: ['ค่าด่วนเพิ่ม (G)', ''], career_min_wage_hour: ['ค่าจ้างขั้นต่ำที่นับเข้าอาชีพ (บาท/ชม.)', 'กันจ้างหลอกเพื่อปั่นขั้น'], habit_exp_cap: ['EXP กิจวัตรสูงสุดต่อวัน', ''], auto_release_hours: ['จ่ายอัตโนมัติหลังส่งงาน (ชม.)', '12–336'],
+      personal_exp_cap: ['EXP เป้าหมายส่วนตัวสูงสุดต่อวัน', ''], post_fee_gold: ['ค่าลงประกาศงาน (G)', 'รายได้แพลตฟอร์ม'], urgent_fee_gold: ['ค่าด่วนเพิ่ม (G)', ''], career_min_wage_hour: ['ค่าจ้างขั้นต่ำที่นับเข้าอาชีพ (บาท/ชม.)', 'กันจ้างหลอกเพื่อปั่นขั้น'], habit_exp_cap: ['EXP กิจวัตรสูงสุดต่อวัน', ''], auto_release_hours: ['ปิดงานอัตโนมัติหลังส่งงาน (ชม.)', '12–336'],
       checkin_radius_m: ['รัศมีเช็กอินหน้างาน (เมตร)', '50–5000'], vapid_public_key: ['VAPID public key (แจ้งเตือน)', ''], push_function_url: ['URL ฟังก์ชันส่งแจ้งเตือน', ''],
       gold_thb_rate: ['ราคาขาย Gold (บาทต่อ 1 G)', 'เช่น 0.1 — เว้นว่าง = ยังไม่เปิดขาย'], signup_bonus_gold: ['โบนัสสมัครใหม่ (G)', 'Gold ที่ผู้ใช้ใหม่ได้ทันที'],
       review_reward_threshold: ['เควสต์ต้องตรวจเมื่อค่าจ้างตั้งแต่ (บาท)', ''], withdraw_min_gold: ['ถอนขั้นต่ำ (G)', ''], withdraw_dual_threshold: ['ถอนตั้งแต่ยอดนี้ต้องอนุมัติ 2 คน (G)', ''] };
@@ -367,6 +367,16 @@ tr.sel td{background:var(--parchment-200)}
         <label class="f">${esc((L[r.key] || [r.key])[0])}<input name="v" value="${esc(r.value)}" ${edit ? '' : 'readonly'} placeholder="${esc((L[r.key] || ['', ''])[1])}"></label>
         <span class="small muted">แก้ล่าสุด ${when(r.updated_at)}</span>${edit ? '<button class="btn sec" type="submit">บันทึก</button>' : ''}</form>`).join('')}</div>
       <p class="small muted" style="margin:0">การเปลี่ยนค่าทุกครั้งถูกบันทึกในบันทึกการตรวจสอบ</p>`;
+    const { data: xp } = await sb.from('exchange_partners').select('*').order('sort');
+    const ed = can('m.rate');
+    $('content').insertAdjacentHTML('beforeend', `<h2 style="font-size:19px;margin-top:8px">แลกเครดิตจากแอปอื่นเป็น Gold</h2>
+      <p class="small muted" style="margin:0">ทางเดียว เครดิตแอปอื่น → Gold · Gold ที่แลกเข้าคือเงินใหม่ในระบบ ตั้งวงเงินต่อวันกันเฟ้อ · ต้องตั้ง secret ของฟังก์ชัน exchange ให้แต่ละแอปก่อน (ดู docs/exchange-api.md)</p>
+      ${(xp || []).map((x) => `<form class="card row" data-xpartner="${x.id}" style="align-items:flex-end">
+        <div style="flex:1 1 160px"><b>${esc(x.name)}</b><div class="small muted">${x.active ? 'เปิดอยู่' : 'ปิด'}</div></div>
+        <label class="f" style="flex:1 1 140px">Gold ต่อ 1 ${esc(x.unit_name)}<input name="rate" type="number" step="0.0001" min="0" value="${x.gold_per_unit ?? ''}" ${ed ? '' : 'disabled'}></label>
+        <label class="f" style="flex:1 1 140px">วงเงินต่อคนต่อวัน (G)<input name="cap" type="number" min="1" value="${x.daily_cap_gold}" ${ed ? '' : 'disabled'}></label>
+        <label class="row small"><input type="checkbox" name="on" ${x.active ? 'checked' : ''} ${ed ? '' : 'disabled'}> เปิดแลก</label>
+        ${ed ? '<button class="btn sec" type="submit">บันทึก</button>' : ''}</form>`).join('')}`);
   };
 
   VIEWS.staff = async () => {
@@ -654,6 +664,7 @@ tr.sel td{background:var(--parchment-200)}
   $('content').addEventListener('submit', async (ev) => {
     const f = ev.target; ev.preventDefault();
     if (f.dataset.setting) { if (await rpc('set_setting', { p_key: f.dataset.setting, p_value: f.elements.v.value.trim() }, 'บันทึกแล้ว')) reload(); return; }
+    if (f.dataset.xpartner) { const e = f.elements; if (await rpc('set_exchange_partner', { p_id: f.dataset.xpartner, p_rate: e.rate.value ? Number(e.rate.value) : null, p_cap: Number(e.cap.value), p_active: e.on.checked }, 'บันทึกแล้ว')) reload(); return; }
     if (f.id === 'userSearch') { S.userQuery = f.elements.q.value; return reload(); }
     if (f.id === 'staffMsg') { if (await rpc('send_message', { p_quest: (await sb.from('disputes').select('quest_id').eq('id', S.selDispute).single()).data.quest_id, p_body: f.elements.b.value.trim() }, 'ส่งข้อความแล้ว')) reload(); return; }
     if (f.id === 'resolveForm') {

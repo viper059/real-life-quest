@@ -8,11 +8,13 @@
 
   loaders.money = async function () {
     const uid = S.user.id;
-    const [t, o] = await Promise.all([
+    const [t, o, xp, xl] = await Promise.all([
       sb.from('transactions').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(30),
-      sb.from('topup_orders').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(10)
+      sb.from('topup_orders').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(10),
+      sb.from('exchange_partners').select('*').order('sort'),
+      sb.from('exchange_links').select('partner_id,partner_user,linked_at').eq('user_id', uid)
     ]);
-    S.tx = t.data || []; S.orders = o.data || [];
+    S.tx = t.data || []; S.orders = o.data || []; S.partners = xp.data || []; S.xlinks = Object.fromEntries((xl.data || []).map((r) => [r.partner_id, r]));
   };
   loaders.shop = async function () {
     const [s, mine] = await Promise.all([
@@ -53,6 +55,13 @@
       </div>
       ${!topupOpen('gold') && !topupOpen('crystal') ? '<p class="small muted" style="margin:0">ยังไม่เปิดเติมเงิน — ทีมงานกำลังตั้งค่าพร้อมเพย์</p>' : ''}
       </div>
+      ${(S.partners || []).length ? `<div class="section"><div class="card stack"><b>แลกเครดิตจากแอปอื่นเป็น Gold</b>
+        <span class="small muted">เชื่อมบัญชีครั้งเดียว แล้วกดแลกจากในแอปนั้น · แลกเข้าได้ทางเดียว Gold แลกกลับไม่ได้</span>
+        ${S.partners.map((x) => { const ln = S.xlinks[x.id] && S.xlinks[x.id].linked_at;
+          return `<div class="tx"><div style="flex:1;min-width:0"><b style="font-weight:600">${esc(x.name)}</b>
+            <div class="small muted">${x.active ? `1 ${esc(x.unit_name)} = ${Number(x.gold_per_unit)} G · วันละไม่เกิน ${num(x.daily_cap_gold)} G` : 'เร็ว ๆ นี้'}${ln ? ' · <span style="color:var(--teal-ink)">เชื่อมแล้ว</span>' : ''}</div></div>
+            ${x.active ? (ln ? `<button class="btn sec sm" data-xunlink="${x.id}">ยกเลิกเชื่อม</button>` : `<button class="btn action sm" data-xlink="${x.id}">สร้างรหัสเชื่อม</button>`) : ''}</div>`; }).join('')}
+      </div></div>` : ''}
       <div class="section"><form class="card stack" id="payoutForm"><b>รับค่าจ้างทางพร้อมเพย์</b>
         <span class="small muted">ผู้จ้างจะเห็น QR ที่มียอดเงินเมื่องานของคุณเสร็จ เงินเข้าบัญชีคุณตรง ไม่ผ่านแอป · เห็นเฉพาะผู้จ้างงานที่คุณทำเสร็จ</span>
         <div class="row" style="align-items:flex-end"><label class="f" style="flex:1 1 200px">เบอร์ 10 หลัก หรือเลขบัตรประชาชน 13 หลัก<input name="pp" inputmode="numeric" autocomplete="off" value="${esc((S.priv && S.priv.promptpay_id) || '')}"></label>
@@ -157,6 +166,19 @@
     if (w === 'topup-gold') openTopup('gold');
     if (w === 'topup-crystal') openTopup('crystal');
     if (w === 'send') openSendCrystal();
+    if (b.dataset.xlink) {
+      const x = S.partners.find((p) => p.id === b.dataset.xlink);
+      const { data, error } = await sb.rpc('create_link_code', { p_partner: x.id });
+      if (error) return toast(App.errText(error), true);
+      openSheet('เชื่อมบัญชี ' + x.name, `<div class="stack" style="align-items:center;text-align:center">
+        <span>เปิดแอป ${esc(x.name)} ไปที่ "แลกเป็น Gold ของ Real-life Quest" แล้วกรอกรหัสนี้</span>
+        <b style="font-family:var(--font-rpg);font-size:36px;letter-spacing:.15em">${esc(data)}</b>
+        <span class="small muted">ใช้ได้ครั้งเดียว ภายใน 10 นาที · อย่าบอกรหัสนี้กับคนอื่น</span>
+        <button class="btn sec" type="button" id="copyCode">คัดลอกรหัส</button></div>`);
+      $('copyCode').onclick = () => navigator.clipboard && navigator.clipboard.writeText(data).then(() => toast('คัดลอกแล้ว'));
+      return;
+    }
+    if (b.dataset.xunlink && confirm('ยกเลิกการเชื่อมบัญชี? ต้องสร้างรหัสใหม่ถ้าจะแลกอีก')) { await rpc('unlink_partner', { p_partner: b.dataset.xunlink }, 'ยกเลิกเชื่อมแล้ว'); return; }
     if (b.dataset.order) { const o = S.orders.find((x) => x.id === b.dataset.order); if (o) showPay(o); }
     if (b.dataset.ocancel && confirm('ยกเลิกคำสั่งเติมเงินนี้?')) await rpc('cancel_topup', { p_order: b.dataset.ocancel }, 'ยกเลิกแล้ว');
     if (b.dataset.buy) { const i = S.shop.find((x) => x.id === b.dataset.buy); if (i && confirm(`ซื้อ ${i.name} ราคา ${num(i.price)} ${i.currency === 'crystal' ? 'Crystal' : 'Gold'}?`)) { b.disabled = true; await rpc('buy_item', { p_item: i.id }, 'ซื้อแล้ว'); } }
