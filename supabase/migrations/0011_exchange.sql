@@ -18,8 +18,12 @@ create table public.exchange_partners (
   sort int not null default 0
 );
 insert into public.exchange_partners (id, name, unit_name, gold_per_unit, daily_cap_gold, active, sort) values
-  ('feedth',   'ปักหมุด (feedTH)', 'เครดิต', null, 1000, false, 1),
-  ('songduan', 'ส่งด่วน',          'เครดิต', null, 1000, false, 2);
+  -- Owner's rates: 1 credit / 1 baht of top-up = 5 Gold. Opened from the back office once each partner is wired up.
+  ('feedth',   'ปักหมุด (feedTH)', 'เครดิต',            5, 5000,  false, 1),
+  ('songduan', 'ส่งด่วน',          'บาท (ยอดเงินที่เติม)', 5, 25000, false, 2);
+
+-- Gold sells at the same rate (1 baht = 5 G) so no route is cheaper than another.
+update public.app_settings set value = '0.2' where key = 'gold_thb_rate' and coalesce(value, '') = '';
 
 create table public.exchange_links (
   user_id uuid not null references public.profiles(id) on delete cascade,

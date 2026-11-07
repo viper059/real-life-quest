@@ -3,6 +3,9 @@ module.exports = async (t) => {
   const U = await t.user('ex_user'); const V = await t.user('ex_other'); const owner = await t.user('ex_owner', { staff: 'owner' });
   await t.as(U);
   await t.throws(`select create_link_code('feedth')`, 'partner not open', 'closed partner cannot link');
+  await t.admin();
+  t.eq(Number(await t.one(`select gold_per_unit from exchange_partners where id = 'songduan'`)), 5, 'ส่งด่วน 1 baht = 5 G');
+  t.eq(Number(await t.one(`select gold_per_unit from exchange_partners where id = 'feedth'`)), 5, 'ปักหมุด 1 credit = 5 G');
   await t.as(owner);
   await t.throws(`select set_exchange_partner('feedth', null, 500, true)`, 'set a rate', 'needs a rate to open');
   await t.q(`select set_exchange_partner('feedth', 0.5, 500, true)`);
