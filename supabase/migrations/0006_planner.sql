@@ -482,9 +482,9 @@ begin
   if p_step = 1 then
     perform _grant_exp(v_uid, 300); v_reward := '+300 EXP';
   elsif p_step = 2 then
-    select id into v_card from job_cards where rarity = 'R'
+    select id into v_card from job_cards where rarity = 'ไม่ธรรมดา'
        and id not in (select card_id from user_cards where user_id = v_uid) order by random() limit 1;
-    if v_card is null then perform _grant_exp(v_uid, 300); v_reward := '+300 EXP (มีการ์ด R ครบแล้ว)';
+    if v_card is null then perform _grant_exp(v_uid, 300); v_reward := '+300 EXP (มีการ์ดไม่ธรรมดาครบแล้ว)';
     else insert into user_cards (user_id, card_id) values (v_uid, v_card);
          v_reward := 'การ์ด ' || (select name from job_cards where id = v_card); end if;
   else
