@@ -499,14 +499,22 @@ tr.sel td{background:var(--parchment-200)}
 
   VIEWS.users = async () => {
     const term = (S.userQuery || '').trim();
+    const seeBday = can('u.kyc', 'view');
+    const bdayMode = seeBday && S.userBdayMode;
+    $('content').innerHTML = `<h1 style="font-size:28px">ผู้ใช้และการแบน</h1>
+      <div class="row" style="justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px">
+        <form id="userSearch" class="card row" style="align-items:flex-end"><label class="f" style="flex:1 1 220px">ค้นหาชื่อผู้ใช้<input name="q" value="${esc(term)}" autocomplete="off"></label><button class="btn sec" type="submit">ค้นหา</button></form>
+        ${seeBday ? `<button class="btn ${bdayMode ? 'action' : 'sec'}" id="bdayToggle" type="button">${bdayMode ? '← กลับไปดูรายชื่อทั้งหมด' : '🎂 ดูเรียงตามวันเกิด'}</button>` : ''}
+      </div>
+      <div id="usersTable"></div>`;
+    $('bdayToggle') && ($('bdayToggle').onclick = () => { S.userBdayMode = !bdayMode; VIEWS.users(); });
+    if (bdayMode) return renderBirthdayTable();
     let q = sb.from('profiles').select('id,username,display_name,created_at,base_level,quests_done,kyc_status,banned_until,ban_reason,rating_sum,rating_count,poster_rating_sum,poster_rating_count,no_show_count').order('created_at', { ascending: false }).limit(40);
     if (term) q = q.ilike('username', '%' + term.replace(/[%_]/g, '') + '%');
     const { data, error } = await q; if (error) throw error;
     const ban = can('u.ban'), r = (s, c) => c ? (s / c).toFixed(1) + ' (' + c + ')' : '—';
     const KY = { none: 'ยังไม่ยืนยัน', pending: 'รอตรวจ', verified: 'ยืนยันแล้ว', rejected: 'ไม่ผ่าน' };
-    $('content').innerHTML = `<h1 style="font-size:28px">ผู้ใช้และการแบน</h1>
-      <form id="userSearch" class="card row" style="align-items:flex-end"><label class="f" style="flex:1 1 220px">ค้นหาชื่อผู้ใช้<input name="q" value="${esc(term)}" autocomplete="off"></label><button class="btn sec" type="submit">ค้นหา</button></form>
-      <div class="tbl-wrap"><table style="min-width:820px"><thead><tr><th>ผู้ใช้</th><th>ตัวตน</th><th>คะแนนผู้รับงาน</th><th>คะแนนผู้โพสต์</th><th>ไม่มาตามนัด</th><th>สถานะ</th><th></th></tr></thead><tbody>
+    $('usersTable').innerHTML = `<div class="tbl-wrap"><table style="min-width:820px"><thead><tr><th>ผู้ใช้</th><th>ตัวตน</th><th>คะแนนผู้รับงาน</th><th>คะแนนผู้โพสต์</th><th>ไม่มาตามนัด</th><th>สถานะ</th><th></th></tr></thead><tbody>
       ${data.map((u) => { const banned = u.banned_until && new Date(u.banned_until) > Date.now(); return `<tr><td><b>@${esc(u.username)}</b><br><span class="small muted">Lv.${u.base_level} · ${num(u.quests_done)} งาน · บัญชี ${ageDays(u.created_at)} วัน</span></td>
         <td class="small">${KY[u.kyc_status] || u.kyc_status}</td><td class="small">${r(u.rating_sum, u.rating_count)}</td><td class="small">${r(u.poster_rating_sum, u.poster_rating_count)}</td>
         <td class="small" style="${u.no_show_count >= 3 ? 'color:var(--danger-ink);font-weight:600' : ''}">${u.no_show_count}</td>
@@ -514,6 +522,20 @@ tr.sel td{background:var(--parchment-200)}
         <td>${ban && u.id !== S.user.id ? (banned ? `<button class="btn sec" data-unban="${u.id}">ยกเลิกแบน</button>` : `<button class="btn danger" data-ban="${u.id}" data-name="${esc(u.username)}">แบน</button>`) : ''}</td></tr>`; }).join('') || '<tr><td colspan="7" class="muted">ไม่พบผู้ใช้</td></tr>'}
       </tbody></table></div>`;
   };
+
+  async function renderBirthdayTable() {
+    const { data, error } = await sb.rpc('admin_birthdays');
+    if (error) { $('usersTable').innerHTML = `<div class="empty">${esc(errText(error))}</div>`; return; }
+    const age = (b) => Math.floor((Date.now() - new Date(b)) / 31557600000);
+    const dmy = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    const md = (d) => new Date(d).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    $('usersTable').innerHTML = `<p class="small muted" style="margin:4px 0 10px">แสดงเฉพาะผู้ใช้ที่กรอกวันเกิดไว้ · เรียงจากวันเกิดที่ใกล้ถึงที่สุด</p>
+      <div class="tbl-wrap"><table style="min-width:620px"><thead><tr><th>ผู้ใช้</th><th>วันเกิด</th><th>อายุ</th><th>วันเกิดครั้งต่อไป</th></tr></thead><tbody>
+      ${(data || []).map((b) => `<tr${b.days_until === 0 ? ' style="background:var(--parchment-200)"' : ''}><td><b>@${esc(b.username)}</b>${b.display_name ? `<br><span class="small muted">${esc(b.display_name)}</span>` : ''}</td>
+        <td class="small">${dmy(b.birthdate)}</td><td class="small">${age(b.birthdate)} ปี</td>
+        <td class="small">${b.days_until === 0 ? '<b style="color:var(--teal-ink)">วันนี้! 🎂</b>' : md(b.next_birthday) + ' · อีก ' + b.days_until + ' วัน'}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">ยังไม่มีใครกรอกวันเกิด</td></tr>'}
+      </tbody></table></div>`;
+  }
 
   VIEWS.careers = async () => {
     const [{ data: pr, error }, { data: im }] = await Promise.all([

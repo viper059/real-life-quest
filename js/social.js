@@ -23,6 +23,10 @@
       S.claims = cl.data || []; (v.data || []).forEach((x) => { S.myVotes[x.claim_id] = x.approve; });
     }
   };
+  loaders.birthdays = async function () {
+    const { data } = await sb.rpc('guild_birthdays');
+    S.birthdays = data || [];
+  };
   loaders.family = async function () {
     const uid = S.user.id;
     const { data: me } = await sb.from('family_members').select('family_id, role').eq('user_id', uid).is('left_at', null).maybeSingle();
@@ -125,7 +129,22 @@
     <h3 style="font-size:15px;margin:14px 0 8px">เควสต์ในบ้าน</h3>
     <div class="grid">${S.famQuests.length ? S.famQuests.map((q) => App.questCard(q, 'family')).join('') : '<div class="empty">ยังไม่มีเควสต์ในบ้าน</div>'}</div>`;
   }
-  renderers.push(renderGuild, renderFamily);
+  function birthdayRow(b) {
+    const d = new Date(b.next_birthday);
+    const when = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    const label = b.is_today ? 'วันนี้! 🎂' : b.days_until === 1 ? 'พรุ่งนี้' : `อีก ${b.days_until} วัน`;
+    return `<div class="tx"><span aria-hidden="true" style="font-size:18px">${b.is_today ? '🎉' : '🎂'}</span>
+      <div style="flex:1;min-width:0">${esc(b.display_name || b.username)}</div>
+      <span class="small ${b.is_today ? '' : 'muted'}" style="${b.is_today ? 'color:var(--teal-ink);font-weight:600' : ''}">${when} · ${label}</span></div>`;
+  }
+  function renderBirthdays() {
+    const list = S.birthdays || [];
+    const html = list.length ? list.map(birthdayRow).join('') : '<div class="small muted">ยังไม่มีข้อมูลวันเกิดในกิลด์ — ตั้งวันเกิดของคุณได้ที่แท็บตัวละคร</div>';
+    const side = $('birthdayList'); if (side) side.innerHTML = html;
+    const inline = $('guildBirthdays');
+    if (inline) { inline.classList.toggle('hidden', !S.myGuild); if (S.myGuild) inline.innerHTML = `<h3 style="font-size:15px;margin:0">วันเกิดเพื่อนกิลด์</h3>${html}`; }
+  }
+  renderers.push(renderGuild, renderFamily, renderBirthdays);
 
   $('guildPanel').addEventListener('submit', async (ev) => {
     ev.preventDefault(); const f = ev.target;

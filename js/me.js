@@ -140,7 +140,9 @@
           <span class="small muted">ได้ 3 แต้มทุกเลเวลอัป · การ์ดในเด็คเพิ่มค่าสถานะ</span></div>
       </div></div>
       ${renderCareers()}
-      <div class="section"><form class="card row" id="nameForm" style="align-items:flex-end"><label class="f" style="flex:1 1 200px">ชื่อที่แสดง<input id="nameInput" maxlength="40" value="${esc(p.display_name || '')}"></label><button class="btn sec" type="submit">บันทึกชื่อ</button></form></div>`;
+      <div class="section"><form class="card row" id="nameForm" style="align-items:flex-end"><label class="f" style="flex:1 1 200px">ชื่อที่แสดง<input id="nameInput" maxlength="40" value="${esc(p.display_name || '')}"></label><button class="btn sec" type="submit">บันทึกชื่อ</button></form>
+      <form class="card row" id="birthdateForm" style="align-items:flex-end"><label class="f" style="flex:1 1 200px">วันเกิด<input id="birthdateInput" type="date" max="${new Date().toISOString().slice(0, 10)}" value="${esc((S.priv && S.priv.birthdate) || '')}"></label><button class="btn sec" type="submit">บันทึกวันเกิด</button></form>
+      <p class="small muted" style="margin:4px 0 0">ใช้แสดงวันเกิดของคุณให้สมาชิกกิลด์เห็นแค่วัน/เดือน (ไม่โชว์ปีเกิด) เพื่อฉลองกัน</p></div>`;
     mountAvatar();
   }
 
@@ -254,6 +256,11 @@
       if (f.id === 'nameForm') {
         const { error } = await sb.from('profiles').update({ display_name: $('nameInput').value.trim() || null }).eq('id', S.user.id);
         if (error) toast(App.errText(error), true); else { toast('บันทึกชื่อแล้ว'); refresh(['me']); }
+      }
+      if (f.id === 'birthdateForm') {
+        const v = $('birthdateInput').value;
+        if (!v) { toast('เลือกวันเกิดก่อน', true); }
+        else await rpc('set_birthdate', { p_birthdate: v }, 'บันทึกวันเกิดแล้ว');
       }
       if (f.id === 'startCareer') await rpc('start_career', { p_occ: f.elements.occ.value }, 'เริ่มอาชีพแล้ว — รับงานขั้น F ในอาชีพนี้ได้เลย');
       if (f.dataset.promo) {

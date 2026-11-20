@@ -39,6 +39,7 @@
     ['you already have an open claim', 'คุณมีเคลมค้างอยู่'], ['voting closed', 'ปิดโหวตแล้ว'], ['cannot vote on your own claim', 'โหวตเคลมของตัวเองไม่ได้'],
     ['guilds_name_key', 'ชื่อกิลด์นี้มีคนใช้แล้ว'], ['already in a family', 'คุณอยู่ในครอบครัวอื่นแล้ว'], ['family code not found', 'ไม่พบรหัสบ้านนี้'],
     ['parents only', 'เฉพาะผู้ปกครอง'], ['not enough stat points', 'แต้มไม่พอ'], ['card not owned', 'ยังไม่มีการ์ดใบนี้'], ['duplicate card', 'ใส่การ์ดซ้ำไม่ได้'],
+    ['birthdate must be in the past', 'วันเกิดต้องเป็นวันที่ผ่านมาแล้ว'], ['invalid birthdate', 'วันเกิดไม่ถูกต้อง'],
     ['Invalid login credentials', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'], ['Email not confirmed', 'ยังไม่ได้ยืนยันอีเมล — เช็กกล่องจดหมาย'],
     ['User already registered', 'อีเมลนี้สมัครแล้ว'], ['cannot open a dispute', 'เปิดข้อพิพาทไม่ได้ในสถานะนี้'], ['not part of this quest', 'คุณไม่ได้อยู่ในงานนี้']
   ];

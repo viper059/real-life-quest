@@ -83,6 +83,7 @@
     </div>
   </header>
 
+  <div class="layout">
   <nav class="tabs" aria-label="เมนูหลัก">
     <button data-tab="board" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>เควสต์</button>
     <button data-tab="char"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>ตัวละคร</button>
@@ -128,11 +129,18 @@
         <div class="grid" id="cardList" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))"></div></div>
     </section>
     <section id="view-guild" class="hidden">
-      <div class="section"><h1 style="font-size:24px">กิลด์</h1><div id="guildPanel"></div></div>
+      <div class="section"><h1 style="font-size:24px">กิลด์</h1>
+        <div class="card stack hidden" id="guildBirthdays" style="gap:6px"></div>
+        <div id="guildPanel"></div></div>
       <div class="section"><h2 style="font-size:19px">ครอบครัว</h2><div id="familyPanel"></div></div>
     </section>
     <section id="view-wallet" class="hidden"></section>
   </main>
+
+  <aside class="side-panel" id="sidePanel">
+    <div class="card stack"><h2 style="font-size:16px">วันเกิด</h2><div id="birthdayList" class="stack"></div></div>
+  </aside>
+  </div>
 </div>
 
 <!-- Full-screen sheet for quest details, notifications, forms -->
