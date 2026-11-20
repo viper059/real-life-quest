@@ -305,10 +305,12 @@
 
   /* ---------- auth ---------- */
   let mode = 'login';
+  let inRecovery = false;
   function setMode(m) {
     mode = m;
     $('tabLogin').setAttribute('aria-pressed', m === 'login'); $('tabSignup').setAttribute('aria-pressed', m === 'signup');
     $('usernameWrap').classList.toggle('hidden', m !== 'signup'); $('termsWrap').classList.toggle('hidden', m !== 'signup');
+    $('forgotWrap').classList.toggle('hidden', m !== 'login');
     $('authSubmit').textContent = m === 'login' ? 'เข้าสู่ระบบ' : 'สมัครและเริ่มผจญภัย';
     $('authPassword').autocomplete = m === 'login' ? 'current-password' : 'new-password';
     $('authMsg').textContent = '';
@@ -336,6 +338,36 @@
   };
   $('signOut').onclick = () => sb.auth.signOut();
 
+  $('forgotLink').onclick = async () => {
+    const email = $('authEmail').value.trim();
+    if (!email) { $('authMsg').textContent = 'กรอกอีเมลที่สมัครไว้ก่อน แล้วกดลืมรหัสผ่านอีกครั้ง'; return; }
+    $('forgotLink').disabled = true; $('authMsg').textContent = 'กำลังส่งลิงก์ตั้งรหัสผ่านใหม่…';
+    try {
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      if (error) throw error;
+      $('authMsg').textContent = 'ถ้าอีเมลนี้มีอยู่ในระบบ จะมีลิงก์ตั้งรหัสผ่านใหม่ส่งไปให้ — เปิดอีเมลแล้วกดลิงก์นั้น';
+    } catch (e) { $('authMsg').textContent = errText(e); }
+    finally { $('forgotLink').disabled = false; }
+  };
+
+  $('resetForm').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const p1 = $('resetPassword').value, p2 = $('resetPassword2').value;
+    if (p1 !== p2) { $('resetMsg').textContent = 'รหัสผ่านทั้งสองช่องไม่ตรงกัน'; return; }
+    $('resetSubmit').disabled = true; $('resetMsg').textContent = 'กำลังบันทึก…';
+    try {
+      const { error } = await sb.auth.updateUser({ password: p1 });
+      if (error) throw error;
+      inRecovery = false;
+      const { data } = await sb.auth.getSession();
+      $('resetView').classList.add('hidden'); $('appView').classList.remove('hidden');
+      S.user = data.session.user;
+      await refresh(); subscribe(); route();
+      toast('ตั้งรหัสผ่านใหม่แล้ว');
+    } catch (e) { $('resetMsg').textContent = errText(e); }
+    finally { $('resetSubmit').disabled = false; }
+  };
+
   /* ---------- install as app (PWA) ---------- */
   const ua = navigator.userAgent;
   const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
@@ -357,8 +389,14 @@
 
   /* ---------- boot ---------- */
   function boot() {
-    sb.auth.onAuthStateChange((_evt, session) => {
+    sb.auth.onAuthStateChange((evt, session) => {
       const u = session ? session.user : null;
+      if (evt === 'PASSWORD_RECOVERY') {
+        inRecovery = true;
+        $('authView').classList.add('hidden'); $('appView').classList.add('hidden'); $('resetView').classList.remove('hidden');
+        return;
+      }
+      if (inRecovery) return; // stay on the "set new password" screen until resetForm is submitted
       if (u && (!S.user || S.user.id !== u.id)) {
         S.user = u; $('authView').classList.add('hidden'); $('appView').classList.remove('hidden');
         setTimeout(async () => { await refresh(); subscribe(); route(); }, 0);

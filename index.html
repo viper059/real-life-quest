@@ -42,12 +42,30 @@
         </label>
         <label class="f">อีเมล<input id="authEmail" type="email" required autocomplete="email"></label>
         <label class="f">รหัสผ่าน<input id="authPassword" type="password" required minlength="6" autocomplete="current-password"></label>
+        <div class="row" id="forgotWrap" style="justify-content:flex-end;margin-top:-6px">
+          <button type="button" id="forgotLink" class="small" style="background:none;border:none;color:var(--teal-600);text-decoration:underline;cursor:pointer;padding:0">ลืมรหัสผ่าน?</button>
+        </div>
         <label class="row small hidden" id="termsWrap"><input type="checkbox" id="authTerms" style="width:20px;height:20px"> ยอมรับ <a href="terms.html" target="_blank">ข้อตกลงการใช้งาน</a> และ <a href="privacy.html" target="_blank">นโยบายความเป็นส่วนตัว</a></label>
         <button class="btn primary" id="authSubmit" type="submit">เข้าสู่ระบบ</button>
         <p id="authMsg" class="small muted" role="status" style="margin:0"></p>
       </form>
     </div>
     <p class="small muted center"><a href="terms.html">ข้อตกลงการใช้งาน</a> · <a href="privacy.html">นโยบายความเป็นส่วนตัว</a></p>
+  </div>
+</section>
+
+<!-- ===== Password reset (opened from the email link) ===== -->
+<section id="resetView" class="hidden">
+  <div class="auth">
+    <div class="card stack">
+      <div><div class="brand">REAL-LIFE QUEST</div><p class="muted" style="margin:4px 0 0">ตั้งรหัสผ่านใหม่</p></div>
+      <form id="resetForm" class="stack">
+        <label class="f">รหัสผ่านใหม่<input id="resetPassword" type="password" required minlength="6" autocomplete="new-password"></label>
+        <label class="f">ยืนยันรหัสผ่านใหม่<input id="resetPassword2" type="password" required minlength="6" autocomplete="new-password"></label>
+        <button class="btn primary" id="resetSubmit" type="submit">บันทึกรหัสผ่านใหม่</button>
+        <p id="resetMsg" class="small muted" role="status" style="margin:0"></p>
+      </form>
+    </div>
   </div>
 </section>
 
