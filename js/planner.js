@@ -1,6 +1,6 @@
 /* Real-life Quest — planner: daily quests + streak chest, monthly quests + reward track, personal goals (family-verified for 2× EXP). */
 (() => {
-  const { sb, S, $, esc, num, toast, rpc, refresh, loaders, renderers, geolocate, upload } = App;
+  const { sb, S, $, esc, num, toast, rpc, refresh, loaders, renderers, geolocate, upload, openSheet, closeSheet, distanceKm } = App;
   const PCAT = { health: 'สุขภาพ', study: 'เรียนรู้', money: 'การเงิน', home: 'บ้าน', discipline: 'วินัย', other: 'อื่น ๆ' };
   const REPEAT = { daily: 'ทุกวัน', weekly: 'ทุกสัปดาห์', monthly: 'ทุกเดือน' };
   const DIFF = { 1: 'ง่าย', 2: 'กลาง', 3: 'ยาก' };
@@ -81,7 +81,7 @@
 
 
   /* ---------- everyday-life habits (กิจวัตร) ---------- */
-  const HGRP = [['body', 'ร่างกาย'], ['food', 'อาหาร'], ['health', 'สุขภาพ'], ['home', 'งานบ้าน'], ['mind', 'ใจและวินัย'], ['student', 'นักเรียน'], ['worker', 'คนทำงาน']];
+  const HGRP = [['body', 'ร่างกาย'], ['food', 'อาหาร'], ['health', 'สุขภาพ'], ['home', 'งานบ้าน'], ['mind', 'ใจและวินัย'], ['walk', 'เดินเพื่อสุขภาพ'], ['student', 'นักเรียน'], ['worker', 'คนทำงาน']];
   const PLACE = { home: 'บ้าน', school: 'โรงเรียน', work: 'ที่ทำงาน' };
   const hm = (iso) => new Date(iso).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
   function blockText(h) {
@@ -120,18 +120,60 @@
           return `<button class="btn ${p ? 'sec' : 'action'} sm" data-hplace="${k}" ${locked ? 'disabled' : ''}>${p ? '✓ ' : ''}${PLACE[k]}${locked ? ' · ล็อกถึง ' + new Date(p.locked_until).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : p ? ' · ตั้งใหม่' : ' · ตั้งที่นี่'}</button>`; }).join('')}</div></div>` : ''}
       ${groups.map(([g, label]) => { const list = H.habits.filter((h) => h.grp === g); if (!list.length) return '';
         return `<div class="card stack" style="gap:2px"><h2 style="font-size:16px">${label}</h2>${list.map((h) => {
-          const can = !h.block, proof = h.verify === 'photo' || (h.verify === 'parent' && !H.has_parent);
+          const can = !h.block, proof = h.verify === 'photo' || (h.verify === 'parent' && !H.has_parent), isGps = h.verify === 'gps';
           return `<div class="tx">
             <span aria-hidden="true" style="font-size:24px;width:36px;text-align:center;flex:none">${h.icon}</span>
             <div style="flex:1;min-width:0"><div>${esc(h.title)} <span class="gold" style="font-size:13px">+${h.exp}</span></div>
-              <div class="small muted">${h.count}/${h.max} วันนี้${h.verify === 'location' ? ' · เช็กอินที่' + PLACE[h.place] : ''}${proof ? ' · แนบรูป' : ''}${h.verify === 'parent' && H.has_parent ? ' · ผู้ปกครองรับรอง' : ''}${can ? '' : ' · <span style="color:var(--danger-ink)">' + esc(blockText(h)) + '</span>'}</div>
+              <div class="small muted">${h.count}/${h.max} วันนี้${h.verify === 'location' ? ' · เช็กอินที่' + PLACE[h.place] : ''}${isGps ? ' · วัดระยะด้วย GPS' : ''}${proof ? ' · แนบรูป' : ''}${h.verify === 'parent' && H.has_parent ? ' · ผู้ปกครองรับรอง' : ''}${can ? '' : ' · <span style="color:var(--danger-ink)">' + esc(blockText(h)) + '</span>'}</div>
               ${h.hint ? `<div class="small muted">${esc(h.hint)}</div>` : ''}</div>
-            ${proof && can ? `<label class="btn action sm" style="cursor:pointer">📷 ทำแล้ว<input type="file" accept="image/*" capture="environment" data-hphoto="${h.id}" hidden></label>`
+            ${isGps ? `<button class="btn ${can ? 'action' : 'sec'} sm" data-p="walkstart" data-id="${h.id}" ${can ? '' : 'disabled'}>${h.count >= h.max ? '✓' : '🚶 เริ่มเดิน'}</button>`
+              : proof && can ? `<label class="btn action sm" style="cursor:pointer">📷 ทำแล้ว<input type="file" accept="image/*" capture="environment" data-hphoto="${h.id}" hidden></label>`
               : `<button class="btn ${can ? 'action' : 'sec'} sm" data-p="habit" data-id="${h.id}" data-loc="${h.verify === 'location' ? 1 : 0}" ${can ? '' : 'disabled'}>${h.count >= h.max ? '✓' : 'ทำแล้ว'}</button>`}
           </div>`; }).join('')}</div>`; }).join('')}
     </div>`;
   }
   const habitMsg = (x) => x.status === 'pending' ? 'บันทึกแล้ว รอผู้ปกครองรับรอง' : x.exp ? `+${x.exp} EXP${x.capped ? ' (ถึงเพดานวันนี้)' : ''}` : 'บันทึกแล้ว (ครบเพดาน EXP วันนี้)';
+
+  /* ---------- GPS walking quests ---------- */
+  function openWalkTracker(h) {
+    const target = h.target_m;
+    let watchId = null, total = 0, last = null, startedAt = 0;
+    openSheet('🚶 ' + h.title, `<div class="stack">
+        <p class="small muted" style="margin:0">กดเริ่มเดิน แล้วเปิดแอปทิ้งไว้ระหว่างเดิน — แอปจะวัดระยะทางจากตำแหน่ง GPS ให้อัตโนมัติ</p>
+        <div class="card wood stack" style="align-items:center;text-align:center">
+          <span class="small" style="color:var(--on-wood-muted)">ระยะทางที่เดินได้</span>
+          <span id="walkDist" style="font-family:var(--font-rpg);font-size:36px;font-weight:700;color:var(--gold-500)">0 ม.</span>
+          <div class="bar dark" style="width:100%"><div id="walkBar" style="width:0%;background:var(--exp)"></div></div>
+          <span class="small" style="color:var(--on-wood-muted)">เป้าหมาย ${target} ม.</span>
+        </div>
+        <p id="walkStatus" class="small muted" style="margin:0">กดเริ่มแล้วเดินได้เลย</p>
+        <div class="row"><button class="btn primary" id="walkStart" type="button" style="flex:1">เริ่มเดิน</button>
+          <button class="btn action" id="walkFinish" type="button" style="flex:1" disabled>ส่งผล</button></div>
+      </div>`, () => { if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId); });
+    const distEl = $('walkDist'), barEl = $('walkBar'), statusEl = $('walkStatus'), startBtn = $('walkStart'), finishBtn = $('walkFinish');
+    function update() {
+      distEl.textContent = Math.round(total) + ' ม.';
+      barEl.style.width = Math.min(100, Math.round(total / target * 100)) + '%';
+      if (total >= target) { finishBtn.disabled = false; statusEl.textContent = 'ครบระยะแล้ว! กดส่งผลได้เลย'; }
+    }
+    startBtn.onclick = () => {
+      if (!navigator.geolocation) { toast('อุปกรณ์นี้ไม่รองรับ GPS', true); return; }
+      startBtn.disabled = true; statusEl.textContent = 'กำลังจับตำแหน่ง…'; startedAt = Date.now(); total = 0; last = null; update();
+      watchId = navigator.geolocation.watchPosition((pos) => {
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (last) { const d = distanceKm(last, p) * 1000; if (d > 1 && d < 50) total += d; } // ignore GPS jitter + implausible single jumps
+        last = p; statusEl.textContent = 'กำลังเดิน…'; update();
+      }, () => { statusEl.textContent = 'หาตำแหน่งไม่ได้ — เปิดสิทธิ์ตำแหน่งแล้วลองใหม่'; startBtn.disabled = false; },
+        { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
+    };
+    finishBtn.onclick = async () => {
+      finishBtn.disabled = true;
+      const duration = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+      const ok = await rpc('log_walk', { p_habit: h.id, p_distance_m: Math.round(total), p_duration_s: duration }, habitMsg);
+      if (ok) closeSheet(); else finishBtn.disabled = false;
+    };
+  }
 
   function renderPlan() {
     const el = $('qsub-plan');
@@ -162,7 +204,9 @@
       return;
     }
     const b = ev.target.closest('button[data-p]'); if (!b) return;
-    b.disabled = true; const id = b.dataset.id;
+    const id = b.dataset.id;
+    if (b.dataset.p === 'walkstart') { const h = (S.habits.habits || []).find((x) => x.id === id); if (h) openWalkTracker(h); return; }
+    b.disabled = true;
     switch (b.dataset.p) {
       case 'chest': await rpc('claim_daily_chest', {}, (x) => `เปิดหีบ +${x.exp} EXP · ต่อเนื่อง ${x.streak} วัน`); break;
       case 'daily': await rpc('claim_daily', { p_template: id }, (x) => `+${x} EXP`); break;
