@@ -22,7 +22,7 @@ h1,h2,h3{font-family:var(--font-display);margin:0;line-height:1.3}
 img{max-width:100%}
 
 /* header */
-.top{background:var(--wood-800);border-bottom:3px solid var(--brass-500);color:var(--on-wood);position:sticky;top:0;z-index:20}
+.top{background:var(--wood-800);border-bottom:3px solid var(--brass-500);color:var(--on-wood);position:sticky;top:0;z-index:20;padding-top:env(safe-area-inset-top)}
 .top-in{max-width:1200px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .lv{width:38px;height:38px;border-radius:50%;background:var(--wood-700);border:2px solid var(--gold-500);display:flex;align-items:center;justify-content:center;font-family:var(--font-rpg);font-weight:700;color:var(--gold-500);flex:none}
 .who{display:flex;flex-direction:column;min-width:0;flex:1}
@@ -99,6 +99,7 @@ label.f input:focus,label.f select:focus,label.f textarea:focus{outline:2px soli
 @media (prefers-reduced-motion:reduce){.q.is-urgent,.chest-ready{animation:none}}
 .q .foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto}
 .radar{height:360px;border-radius:var(--r-lg);border:1.5px solid var(--brass-500);margin-top:10px;overflow:hidden}
+@media (max-width:899px){.radar{height:min(600px,calc(100dvh - 330px));min-height:320px}}
 
 /* wallet */
 .balance{background:var(--wood-800);color:var(--on-wood);border:1.5px solid var(--gold-500);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:4px}

@@ -176,6 +176,10 @@
     async notifs() {
       const { data } = await sb.from('notifications').select('*').eq('user_id', S.user.id).order('created_at', { ascending: false }).limit(40);
       S.notifs = data || []; S.unread = S.notifs.filter((n) => !n.read_at).length;
+    },
+    async staff() {
+      const { data } = await sb.from('staff_members').select('role_id').eq('user_id', S.user.id).maybeSingle();
+      S.isStaff = !!data;
     }
   };
   const renderers = [];
@@ -195,6 +199,7 @@
     $('hSub').textContent = 'Lv.' + p.base_level + ' · ' + (p.title || p.job_class || 'นักผจญภัย');
     $('hGold').textContent = num(w.gold); $('hCrystal').textContent = num(w.crystal);
     $('bellCount').textContent = S.unread > 9 ? '9+' : S.unread; $('bellCount').classList.toggle('hidden', !S.unread);
+    $('adminLink').classList.toggle('hidden', !S.isStaff);
     renderKycBanner();
     for (const r of renderers) { try { r(); } catch (e) { console.error(e); } }
     if (S.openQuest && App.refreshQuestSheet) App.refreshQuestSheet();
