@@ -42,7 +42,9 @@
     ['birthdate must be in the past', 'วันเกิดต้องเป็นวันที่ผ่านมาแล้ว'], ['invalid birthdate', 'วันเกิดไม่ถูกต้อง'],
     ['not far enough yet', 'ยังเดินไม่ครบระยะ'], ['too fast to be walking', 'เร็วเกินไปสำหรับการเดิน — ต้องเดินจริงเท่านั้น'], ['invalid walk data', 'ข้อมูลการเดินไม่ถูกต้อง ลองใหม่'],
     ['Invalid login credentials', 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'], ['Email not confirmed', 'ยังไม่ได้ยืนยันอีเมล — เช็กกล่องจดหมาย'],
-    ['User already registered', 'อีเมลนี้สมัครแล้ว'], ['cannot open a dispute', 'เปิดข้อพิพาทไม่ได้ในสถานะนี้'], ['not part of this quest', 'คุณไม่ได้อยู่ในงานนี้']
+    ['User already registered', 'อีเมลนี้สมัครแล้ว'], ['cannot open a dispute', 'เปิดข้อพิพาทไม่ได้ในสถานะนี้'], ['not part of this quest', 'คุณไม่ได้อยู่ในงานนี้'],
+    ['outside your region', 'งานนี้อยู่นอกเขตพื้นที่ที่คุณดูแล'], ['geo admin needs a scope area', 'ต้องระบุชื่อพื้นที่ที่จะให้ดูแล'],
+    ['only a god account can grant or change a god account', 'เฉพาะบัญชี GOD เท่านั้นที่ตั้งหรือเปลี่ยนสิทธิ GOD ได้'], ['cannot remove the last god', 'ต้องมีบัญชี GOD เหลืออยู่อย่างน้อย 1 คน']
   ];
 
   const $ = (id) => document.getElementById(id);

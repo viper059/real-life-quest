@@ -379,21 +379,27 @@ tr.sel td{background:var(--parchment-200)}
         ${ed ? '<button class="btn sec" type="submit">บันทึก</button>' : ''}</form>`).join('')}`);
   };
 
+  const GEO_SCOPE_LEVEL = { continent_admin: 'continent', country_admin: 'country', region_admin: 'region', province_admin: 'province', district_admin: 'district', subdistrict_admin: 'subdistrict' };
+  const GEO_SCOPE_LABEL = { continent: 'ทวีป', country: 'ประเทศ', region: 'ภาค', province: 'จังหวัด', district: 'อำเภอ', subdistrict: 'ตำบล' };
+
   VIEWS.staff = async () => {
-    const { data, error } = await sb.from('staff_members').select('user_id, role_id, added_at, p:profiles!staff_members_user_id_fkey(username,display_name)').order('added_at');
+    const { data, error } = await sb.from('staff_members').select('user_id, role_id, scope_level, scope_value, added_at, p:profiles!staff_members_user_id_fkey(username,display_name)').order('added_at');
     if (error) throw error;
     const { data: roles } = await sb.from('staff_roles').select('*').order('sort');
     const opts = (cur) => (roles || []).map((r) => `<option value="${r.id}" ${r.id === cur ? 'selected' : ''}>${esc(r.label)}</option>`).join('');
     const edit = can('s.roles');
+    const scopeTxt = (s) => s.scope_level ? `<span class="small muted">${esc(GEO_SCOPE_LABEL[s.scope_level] || s.scope_level)}: ${esc(s.scope_value)}</span>` : '<span class="small muted">—</span>';
     $('content').innerHTML = `<h1 style="font-size:28px">ทีมงาน</h1>
       ${edit ? `<form id="addStaff" class="card row" style="align-items:flex-end">
         <label class="f" style="flex:1 1 200px">ชื่อผู้ใช้ (ไม่ต้องใส่ @)<input name="u" required pattern="[A-Za-z0-9_]{3,20}"></label>
         <label class="f">บทบาท<select name="r">${opts('support')}</select></label>
+        <label class="f" style="flex:1 1 160px">ชื่อพื้นที่ (เฉพาะแอดมินตามเขต)<input name="area" placeholder="เช่น พระนครศรีอยุธยา"></label>
         <button class="btn primary" type="submit">เพิ่มเข้าทีม</button></form>` : ''}
-      <div class="tbl-wrap"><table style="min-width:520px"><thead><tr><th>ผู้ใช้</th><th>บทบาท</th><th>เพิ่มเมื่อ</th><th></th></tr></thead><tbody>
+      <div class="tbl-wrap"><table style="min-width:620px"><thead><tr><th>ผู้ใช้</th><th>บทบาท</th><th>พื้นที่ดูแล</th><th>เพิ่มเมื่อ</th><th></th></tr></thead><tbody>
       ${data.map((s) => `<tr><td><b>${esc(s.p && (s.p.display_name || s.p.username))}</b><br><span class="small muted">@${esc(s.p && s.p.username)}</span></td>
-        <td>${edit ? `<select data-staff-role="${s.user_id}" aria-label="บทบาทของ ${esc(s.p && s.p.username)}" style="border:1.5px solid var(--brass-600);border-radius:8px;padding:6px">${opts(s.role_id)}</select>` : esc(s.role_id)}</td>
-        <td class="small muted">${when(s.added_at)}</td><td style="text-align:right">${edit && s.user_id !== S.user.id ? `<button class="btn sec" data-staff-remove="${s.user_id}">นำออก</button>` : ''}</td></tr>`).join('')}
+        <td>${edit && s.role_id !== 'god' ? `<select data-staff-role="${s.user_id}" aria-label="บทบาทของ ${esc(s.p && s.p.username)}" style="border:1.5px solid var(--brass-600);border-radius:8px;padding:6px">${opts(s.role_id)}</select>` : esc((roles || []).find((r) => r.id === s.role_id)?.label || s.role_id)}</td>
+        <td>${scopeTxt(s)}</td>
+        <td class="small muted">${when(s.added_at)}</td><td style="text-align:right">${edit && s.user_id !== S.user.id && s.role_id !== 'god' ? `<button class="btn sec" data-staff-remove="${s.user_id}">นำออก</button>` : ''}</td></tr>`).join('')}
       </tbody></table></div>`;
   };
 
@@ -681,7 +687,12 @@ tr.sel td{background:var(--parchment-200)}
   });
   $('content').addEventListener('change', async (ev) => {
     const s = ev.target.closest('select[data-staff-role]'); if (!s) return;
-    if (await rpc('assign_staff', { p_user: s.dataset.staffRole, p_role: s.value }, 'เปลี่ยนบทบาทแล้ว')) reload(); else reload();
+    const lvl = GEO_SCOPE_LEVEL[s.value]; let area = null;
+    if (lvl) {
+      area = (prompt(`ชื่อ${GEO_SCOPE_LABEL[lvl]}ที่จะให้ดูแล:`) || '').trim();
+      if (!area) { reload(); return; }
+    }
+    if (await rpc('assign_staff', { p_user: s.dataset.staffRole, p_role: s.value, p_scope_level: lvl || null, p_scope_value: area }, 'เปลี่ยนบทบาทแล้ว')) reload(); else reload();
   });
   $('content').addEventListener('submit', async (ev) => {
     const f = ev.target; ev.preventDefault();
@@ -702,7 +713,9 @@ tr.sel td{background:var(--parchment-200)}
     if (f.id === 'addStaff') {
       const { data: p } = await sb.from('profiles').select('id').eq('username', f.elements.u.value.trim()).maybeSingle();
       if (!p) return toast('ไม่พบชื่อผู้ใช้นี้', true);
-      if (await rpc('assign_staff', { p_user: p.id, p_role: f.elements.r.value }, 'เพิ่มเข้าทีมแล้ว')) reload();
+      const role = f.elements.r.value, lvl = GEO_SCOPE_LEVEL[role], area = (f.elements.area.value || '').trim();
+      if (lvl && !area) return toast('ใส่ชื่อพื้นที่ที่จะให้ดูแลด้วย', true);
+      if (await rpc('assign_staff', { p_user: p.id, p_role: role, p_scope_level: lvl || null, p_scope_value: lvl ? area : null }, 'เพิ่มเข้าทีมแล้ว')) reload();
     }
   });
 })();
