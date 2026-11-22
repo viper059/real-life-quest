@@ -10,12 +10,16 @@
   }
 
   loaders.careers = async function () {
-    const [c, pr, im] = await Promise.all([
+    const [c, pr, im, lt, ul, la] = await Promise.all([
       sb.rpc('my_careers'),
       sb.from('promotion_requests').select('*').eq('user_id', S.user.id).order('created_at', { ascending: false }).limit(10),
-      sb.from('career_imports').select('*').eq('user_id', S.user.id).order('created_at', { ascending: false }).limit(10)
+      sb.from('career_imports').select('*').eq('user_id', S.user.id).order('created_at', { ascending: false }).limit(10),
+      sb.from('license_titles').select('*').eq('active', true),
+      sb.from('user_licenses').select('*').eq('user_id', S.user.id).is('revoked_at', null),
+      sb.from('license_applications').select('*').eq('user_id', S.user.id).order('created_at', { ascending: false }).limit(10)
     ]);
     S.careers = c.data || []; S.promos = pr.data || []; S.imports = im.data || [];
+    S.licenseTitles = lt.data || []; S.myLicenses = new Set((ul.data || []).map((r) => r.occupation_id)); S.licenseApps = la.data || [];
   };
   loaders.cards = async function () {
     const uid = S.user.id;
@@ -48,10 +52,32 @@
   }
 
   /* ---------- careers ---------- */
+  const _rankOrd = (r) => 'FEDCBAS'.indexOf(r);
   const gate = (ok, label) => `<li style="display:flex;gap:6px;align-items:flex-start"><span aria-hidden="true" style="color:${ok ? 'var(--teal-600)' : 'var(--ink-muted)'};font-weight:700">${ok ? '✓' : '○'}</span><span>${label}</span></li>`;
+  function licenseSection(c) {
+    const lt = (S.licenseTitles || []).find((l) => l.occupation_id === c.occupation);
+    if (!lt) return '';
+    if ((S.myLicenses || new Set()).has(c.occupation)) {
+      return `<div class="card wood stack" style="margin-top:8px"><b>${esc(lt.label)}</b><span class="small">สมาคมวิชาชีพรับรองแล้ว — มีตำแหน่งนี้</span></div>`;
+    }
+    const pending = (S.licenseApps || []).find((a) => a.occupation_id === c.occupation && a.status === 'pending');
+    const approved = (S.licenseApps || []).find((a) => a.occupation_id === c.occupation && a.status === 'approved');
+    const rejected = (S.licenseApps || []).filter((a) => a.occupation_id === c.occupation && a.status === 'rejected').slice(0, 1);
+    const okRank = _rankOrd(c.rank) >= _rankOrd(lt.min_rank);
+    let body;
+    if (pending) body = '<span class="small" style="color:var(--teal-ink)">ส่งคำขอขึ้นทะเบียนแล้ว · รอสมาคมวิชาชีพตรวจ</span>';
+    else if (approved) body = `<span class="small" style="color:var(--teal-ink)">สมาคมอนุมัติแล้ว — ซื้อตำแหน่งได้</span>
+      <button class="btn primary" type="button" data-license-buy="${approved.id}">ซื้อตำแหน่ง (${num(lt.price_gold)} G)</button>`;
+    else if (!okRank) body = `<span class="small muted">ต้องถึงขั้น ${esc(lt.min_rank)} (${esc(RANK_LABEL[lt.min_rank] || '')}) ก่อนขอขึ้นทะเบียน</span>`;
+    else body = `<form class="stack" data-license-apply="${c.occupation}">
+        <label class="f">หลักฐานเพิ่มเติม (ไม่บังคับ — รูปหรือ PDF)<input type="file" name="file" accept="image/*,application/pdf"></label>
+        <button class="btn sec" type="submit">ขอขึ้นทะเบียนกับสมาคมวิชาชีพ</button></form>`;
+    return `<div class="card stack" style="margin-top:8px"><b>${esc(lt.label)}</b><span class="small muted">ราคา ${num(lt.price_gold)} G · ต้องขั้น ${esc(lt.min_rank)} ขึ้นไป</span>${body}
+      ${rejected.map((r) => `<span class="small" style="color:var(--danger-ink)">คำขอล่าสุดไม่ผ่าน: ${esc(r.note || '')}</span>`).join('')}</div>`;
+  }
   function careerCard(c) {
     const occ = S.occupations.find((o) => o.id === c.occupation) || { label: c.occupation };
-    if (!c.next) return `<div class="card stack"><div class="row between"><b>${esc(occ.label)}</b><span class="rank">RANK ${c.rank}</span></div><span class="small">${esc(c.rank_label)} — ขั้นสูงสุดแล้ว</span></div>`;
+    if (!c.next) return `<div class="card stack"><div class="row between"><b>${esc(occ.label)}</b><span class="rank">RANK ${c.rank}</span></div><span class="small">${esc(c.rank_label)} — ขั้นสูงสุดแล้ว</span>${licenseSection(c)}</div>`;
     const pct = (a, b) => b ? Math.min(100, Math.round(a / b * 100)) : 100;
     const timeOk = c.months_in_rank >= c.min_months;
     return `<div class="card stack">
@@ -70,6 +96,7 @@
         : c.ok ? `<form class="stack" data-promo="${c.occupation}">${c.committee ? '<label class="f">แฟ้มผลงาน (รูปหรือ PDF)<input type="file" name="file" accept="image/*,application/pdf" required></label>' : ''}
           <button class="btn primary" type="submit">${c.committee ? 'ส่งผลงานขอเลื่อนขั้น' : 'เลื่อนขั้นเป็น ' + c.next}</button></form>`
         : '<span class="small muted">ยังไม่ผ่านทุกเงื่อนไข — เลื่อนขั้นจริงใช้เวลาหลายปีเหมือนงานจริง</span>'}
+      ${licenseSection(c)}
     </div>`;
   }
   function renderCareers() {
@@ -187,6 +214,8 @@
       const a = S.avatarDraft; const ok = await rpc('set_avatar', { p_skin: a.skin, p_hair: a.hair, p_shirt: a.shirt, p_pants: a.pants, p_shoes: a.shoes }, 'บันทึกสีแล้ว');
       if (ok) { S.avatarDraft = null; renderChar(); }
     }
+    const lb = ev.target.closest('[data-license-buy]');
+    if (lb) { lb.disabled = true; if (await rpc('buy_license', { p_app: lb.dataset.licenseBuy }, 'ได้ตำแหน่งแล้ว!')) refresh(['careers']); else lb.disabled = false; }
   });
   $('view-char').addEventListener('input', (ev) => {
     const ci = ev.target.closest('[data-color-input]'); if (!ci) return;
@@ -276,6 +305,12 @@
         const { data: u } = await sb.from('profiles').select('id').eq('username', f.elements.u.value.trim()).maybeSingle();
         if (!u) toast('ไม่พบชื่อผู้ใช้นี้', true);
         else await rpc('endorse_worker', { p_user: u.id, p_occ: f.elements.occ.value, p_note: f.elements.note.value.trim() || null }, 'รับรองแล้ว');
+      }
+      if (f.dataset.licenseApply) {
+        const file = f.elements.file && f.elements.file.files[0];
+        const path = file ? await upload('private-docs', S.user.id, file, 'license') : null;
+        const ok = await rpc('apply_license', { p_occ: f.dataset.licenseApply, p_doc_path: path }, 'ส่งคำขอขึ้นทะเบียนแล้ว รอสมาคมวิชาชีพตรวจ');
+        if (ok) refresh(['careers']);
       }
     } catch (e) { toast(App.errText(e), true); }
     if (btn && btn.isConnected) btn.disabled = false;
