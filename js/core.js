@@ -14,7 +14,7 @@
     family: { label: 'ครอบครัว', bg: '#f3e3ec', fg: '#7a2e58' }
   };
   const RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S'];
-  const RANK_LABEL = { F: 'ฝึกหัด', E: 'จูเนียร์', D: 'มีประสบการณ์', C: 'ซีเนียร์', B: 'หัวหน้างาน', A: 'ผู้เชี่ยวชาญ', S: 'ปรมาจารย์' };
+  const RANK_LABEL = { F: 'ผู้เริ่มต้น', E: 'อาเดปต์', D: 'เวเทอรัน', C: 'เอ็กซ์เพิร์ต', B: 'มาสเตอร์', A: 'แกรนด์มาสเตอร์', S: 'เลเจนด์' };
   const TX = {
     quest_escrow: 'ล็อกรางวัลเควสต์', quest_paid: 'จ่ายรางวัลเควสต์', quest_reward: 'รางวัลเควสต์', quest_refund: 'คืน Gold เควสต์',
     post_fee: 'ค่าลงประกาศงาน', exchange_in: 'แลกเครดิตจากแอปอื่น', withdraw_hold: 'ล็อกเพื่อถอน', withdraw_paid: 'ถอนสำเร็จ', withdraw_refund: 'คืน Gold (ถอนไม่ผ่าน)',
@@ -33,7 +33,7 @@
     ['too many open orders', 'มีคำสั่งเติมเงินค้างอยู่ 3 รายการแล้ว'], ['daily transfer limit', 'เกินวงเงินส่ง Crystal ต่อวัน'], ['user not found', 'ไม่พบชื่อผู้ใช้นี้'],
     ['already owned', 'มีของชิ้นนี้แล้ว'], ['no free personal slots', 'ช่องเควสต์ส่วนตัวเต็ม — เลเวลอัปหรือซื้อช่องเพิ่ม'], ['not done yet', 'ยังทำไม่ครบ'], ['too soon', 'เร็วเกินไป รออีกสักพัก'], ['outside time window', 'ไม่อยู่ในช่วงเวลาที่ทำได้'], ['done for today', 'ครบจำนวนวันนี้แล้ว'], ['weekdays only', 'เฉพาะวันจันทร์–ศุกร์'], ['earlier step first', 'ต้องเช็กอินไปเรียนหรือไปทำงานก่อน'], ['set your place first', 'ตั้งตำแหน่งก่อน'], ['too far from your saved place', 'ไม่ได้อยู่ที่ตำแหน่งที่ตั้งไว้'], ['place locked', 'ตั้งตำแหน่งใหม่ได้หลังครบ 30 วัน'], ['photo required', 'ต้องแนบรูป'], ['choose your role', 'เลือกก่อนว่าเป็นนักเรียนหรือคนทำงาน'], ['not your role', 'กิจวัตรนี้ไม่ใช่ของบทบาทคุณ'], ['role locked', 'เปลี่ยนบทบาทได้หลังครบ 30 วัน'],
     ['already opened today', 'เปิดหีบวันนี้แล้ว'], ['requirements not met', 'ยังไม่ผ่านเงื่อนไขเลื่อนขั้น'], ['portfolio required', 'ต้องแนบผลงาน'],
-    ['license required', 'อาชีพนี้ต้องเทียบโอนพร้อมใบอนุญาต'], ['endorser rank too low', 'ต้องเป็นซีเนียร์ (C) ขึ้นไปจึงรับรองได้'],
+    ['license required', 'อาชีพนี้ต้องเทียบโอนพร้อมใบอนุญาต'], ['endorser rank too low', 'ต้องเป็นเอ็กซ์เพิร์ต (C) ขึ้นไปจึงรับรองได้'],
     ['no job together', 'ต้องเคยทำงานด้วยกันในอาชีพนี้'], ['already submitted', 'ส่งคำขอไปแล้ว'], ['already in a guild', 'คุณอยู่ในกิลด์อื่นแล้ว'],
     ['guild is full', 'กิลด์เต็มแล้ว'], ['transfer leadership first', 'ต้องโอนตำแหน่งหัวกิลด์ก่อน'], ['claim exceeds fund', 'ยอดเคลมเกินเงินในกองทุน'],
     ['you already have an open claim', 'คุณมีเคลมค้างอยู่'], ['voting closed', 'ปิดโหวตแล้ว'], ['cannot vote on your own claim', 'โหวตเคลมของตัวเองไม่ได้'],

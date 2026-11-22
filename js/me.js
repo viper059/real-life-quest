@@ -104,8 +104,8 @@
     const avail = S.occupations.filter((o) => !started.has(o.id));
     const pendingImports = (S.imports || []).filter((i) => i.status === 'pending');
     return `<div class="section" id="careerSection"><div class="row between"><h2 style="font-size:19px">อาชีพและขั้น</h2></div>
-      <p class="small muted" style="margin:0">ผู้รับงานต้องตรงกับอาชีพและถึงขั้นที่งานกำหนด · งานทั่วไปและขั้น F ใครก็รับได้หลังยืนยันตัวตน · F→E ≥ 3 เดือน, E→D ≥ 2 ปี, จูเนียร์→ซีเนียร์ ≥ 5 ปี</p>
-      <div class="grid" style="align-items:start">${S.careers.map(careerCard).join('') || '<div class="empty">ยังไม่ได้เริ่มอาชีพ — เลือกอาชีพแรกด้านล่าง</div>'}</div>
+      <p class="small muted" style="margin:0">ผู้รับงานต้องตรงกับอาชีพและถึงขั้นที่งานกำหนด · งานทั่วไปและขั้น F ใครก็รับได้หลังยืนยันตัวตน · F→E ≥ 3 เดือน, E→D ≥ 2 ปี, เอ็กซ์เพิร์ต→มาสเตอร์ ≥ 5 ปี</p>
+      <div class="grid" style="align-items:start">${S.careers.map(careerCard).join('') || '<div class="empty"><b>สถานะปัจจุบัน: โนวิส</b><br><span class="small muted">ยังไม่มีอาชีพ — เลือกอาชีพแรกด้านล่างเพื่อเริ่มเส้นทางอาชีพ</span></div>'}</div>
       <div class="grid" style="align-items:start">
         ${avail.length ? `<form class="card stack" id="startCareer"><b>เริ่มอาชีพใหม่ (ขั้น F)</b>
           <label class="f">อาชีพ<select name="occ">${avail.filter((o) => !o.license_required).map((o) => `<option value="${o.id}">${esc(o.label)}</option>`).join('')}</select></label>
@@ -122,7 +122,7 @@
           ${pendingImports.length ? `<span class="small" style="color:var(--teal-ink)">มีคำขอรอตรวจ ${pendingImports.length} รายการ</span>` : ''}
           ${(S.imports || []).filter((i) => i.status === 'rejected').slice(0, 1).map((i) => `<span class="small" style="color:var(--danger-ink)">คำขอล่าสุดไม่ผ่าน: ${esc(i.review_note || '')}</span>`).join('')}</form>
         <form class="card stack" id="endorseForm"><b>รับรองเพื่อนร่วมงาน</b>
-          <span class="small muted">ซีเนียร์ (C) ขึ้นไปรับรองคนที่เคยทำงานด้วยกันได้ ใช้ประกอบการเลื่อนขั้น</span>
+          <span class="small muted">เอ็กซ์เพิร์ต (C) ขึ้นไปรับรองคนที่เคยทำงานด้วยกันได้ ใช้ประกอบการเลื่อนขั้น</span>
           <label class="f">ชื่อผู้ใช้<input name="u" required pattern="[A-Za-z0-9_]{3,20}" autocomplete="off"></label>
           <label class="f">อาชีพ<select name="occ">${S.occupations.map((o) => `<option value="${o.id}">${esc(o.label)}</option>`).join('')}</select></label>
           <label class="f">คำรับรองสั้น ๆ (ไม่บังคับ)<input name="note" maxlength="300"></label>
