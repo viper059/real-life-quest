@@ -136,7 +136,7 @@ tr.sel td{background:var(--parchment-200)}
   const link = (url, label) => url ? `<a href="${esc(url)}" target="_blank" rel="noopener" class="btn sec" style="display:inline-flex;align-items:center;text-decoration:none;min-height:34px">${label}</a>` : '<span class="small muted">ไม่มีไฟล์</span>';
   const WST = { pending: 'รออนุมัติ', second_approval: 'รอคนที่ 2', paid: 'โอนแล้ว', rejected: 'ปฏิเสธแล้ว' };
   const S = { user: null, role: null, roleLabel: '', perms: {}, page: 'overview', settings: {}, qTab: 'pending', selQuest: null };
-  const can = (p, min = 'full') => S.perms[p] === 'full' || (min === 'view' && S.perms[p] === 'view');
+  const can = (p, min = 'full') => S.role === 'god' || S.perms[p] === 'full' || (min === 'view' && S.perms[p] === 'view');
 
   const PAGES = [
     { id: 'overview', label: 'ภาพรวม', need: null },
