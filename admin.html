@@ -148,6 +148,7 @@ tr.sel td{background:var(--parchment-200)}
     { id: 'users', label: 'ผู้ใช้และการแบน', need: ['u.view', 'view'] },
     { id: 'careers', label: 'เลื่อนขั้นอาชีพ', need: ['c.review', 'view'] },
     { id: 'licenses', label: 'สมาคมวิชาชีพ', need: ['c.review', 'view'] },
+    { id: 'monsters', label: 'มอนสเตอร์', need: ['q.review', 'view'] },
     { id: 'topups', label: 'ยืนยันเติมเงิน', need: ['m.topup', 'view'] },
     { id: 'shop', label: 'ร้านค้า Crystal', need: ['m.shop', 'view'] },
     { id: 'guilds', label: 'กิลด์และกองทุน', need: ['g.fund', 'view'] },
@@ -359,7 +360,7 @@ tr.sel td{background:var(--parchment-200)}
     S.settings = Object.fromEntries((data || []).map((r) => [r.key, r.value]));
     const L = { crystal_thb_rate: ['ราคา Crystal (บาทต่อ 1 C)', 'เช่น 0.5 — เว้นว่าง = ยังไม่เปิดขาย'], promptpay_id: ['เลขพร้อมเพย์รับเงิน', 'เบอร์ 10 หลัก หรือเลขผู้เสียภาษี 13 หลัก'],
       promptpay_name: ['ชื่อบัญชีพร้อมเพย์', 'แสดงให้ผู้ใช้ตรวจก่อนโอน'], topup_min_thb: ['เติมขั้นต่ำ (บาท)', ''], crystal_daily_transfer_max: ['ส่ง Crystal สูงสุดต่อวัน (C)', ''],
-      personal_exp_cap: ['EXP เป้าหมายส่วนตัวสูงสุดต่อวัน', ''], post_fee_gold: ['ค่าลงประกาศงาน (G)', 'รายได้แพลตฟอร์ม'], urgent_fee_gold: ['ค่าด่วนเพิ่ม (G)', ''], career_min_wage_hour: ['ค่าจ้างขั้นต่ำที่นับเข้าอาชีพ (บาท/ชม.)', 'กันจ้างหลอกเพื่อปั่นขั้น'], habit_exp_cap: ['EXP กิจวัตรสูงสุดต่อวัน', '0 = ไม่จำกัด'], auto_release_hours: ['ปิดงานอัตโนมัติหลังส่งงาน (ชม.)', '12–336'],
+      personal_exp_cap: ['EXP เป้าหมายส่วนตัวสูงสุดต่อวัน', ''], post_fee_gold: ['ค่าลงประกาศงาน (G)', 'รายได้แพลตฟอร์ม'], urgent_fee_gold: ['ค่าด่วนเพิ่ม (G)', ''], career_min_wage_hour: ['ค่าจ้างขั้นต่ำที่นับเข้าอาชีพ (บาท/ชม.)', 'กันจ้างหลอกเพื่อปั่นขั้น'], habit_exp_cap: ['EXP กิจวัตรสูงสุดต่อวัน', '0 = ไม่จำกัด'], monster_radius_m: ['ระยะที่สู้มอนสเตอร์ได้ (เมตร)', ''], monster_cooldown_min: ['มอนสเตอร์พักหลังโดนสู้ (นาที)', 'ต่อคนต่อตัว'], monster_daily_max: ['จำนวนมอนสเตอร์ต่อคนต่อวัน', ''], auto_release_hours: ['ปิดงานอัตโนมัติหลังส่งงาน (ชม.)', '12–336'],
       checkin_radius_m: ['รัศมีเช็กอินหน้างาน (เมตร)', '50–5000'], vapid_public_key: ['VAPID public key (แจ้งเตือน)', ''], push_function_url: ['URL ฟังก์ชันส่งแจ้งเตือน', ''],
       gold_thb_rate: ['ราคาขาย Gold (บาทต่อ 1 G)', 'เช่น 0.1 — เว้นว่าง = ยังไม่เปิดขาย'], signup_bonus_gold: ['โบนัสสมัครใหม่ (G)', 'Gold ที่ผู้ใช้ใหม่ได้ทันที'],
       review_reward_threshold: ['เควสต์ต้องตรวจเมื่อค่าจ้างตั้งแต่ (บาท)', ''], withdraw_min_gold: ['ถอนขั้นต่ำ (G)', ''], withdraw_dual_threshold: ['ถอนตั้งแต่ยอดนี้ต้องอนุมัติ 2 คน (G)', ''] };
@@ -599,6 +600,28 @@ tr.sel td{background:var(--parchment-200)}
       <h2 style="font-size:17px">ตำแหน่งที่เปิดรับ</h2><div class="kpis" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">${(occ || []).map((o) => titleForm(o.id)).join('')}</div>`;
   };
 
+  VIEWS.monsters = async () => {
+    const { data: mons, error } = await sb.rpc('admin_monsters');
+    if (error) throw error;
+    const edit = can('q.review');
+    const KINDS = { slime: 'สไลม์ 🟢', goblin: 'ก็อบลิน 👺', bat: 'ค้างคาว 🦇', golem: 'โกเลม 🗿', dragon: 'มังกร 🐲' };
+    const form = (m) => `<form class="card stack" data-monster="${m ? m.id : ''}">
+        <div class="row between"><b>${m ? esc(m.name) : 'วางมอนสเตอร์ใหม่'}</b>${m ? `<span class="small muted">${m.active ? 'เปิดอยู่' : 'ปิดอยู่'}</span>` : ''}</div>
+        <div class="row"><label class="f" style="flex:2">ชื่อ<input name="name" required maxlength="40" value="${m ? esc(m.name) : ''}" placeholder="เช่น สไลม์สวนสาธารณะ"></label>
+        <label class="f" style="flex:1">ชนิด<select name="kind">${Object.entries(KINDS).map(([k, v]) => `<option value="${k}" ${m && m.kind === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
+        <div class="row"><label class="f">เลเวล (1-10)<input name="level" type="number" min="1" max="10" required value="${m ? m.level : 1}"></label>
+        <label class="f">HP = จำนวนครั้งที่ต้องแตะ (3-60)<input name="hp" type="number" min="3" max="60" required value="${m ? m.hp : 8}"></label></div>
+        <div class="row"><label class="f">EXP (1-200)<input name="exp" type="number" min="1" max="200" required value="${m ? m.exp : 10}"></label>
+        <label class="f">Gold (0-50, ปกติ 0)<input name="gold" type="number" min="0" max="50" required value="${m ? m.gold : 0}"></label></div>
+        <label class="f">ตำแหน่ง: ลิงก์ Google Maps หรือ "ละติจูด, ลองจิจูด"<input name="pos" required value="${m ? m.lat.toFixed(6) + ', ' + m.lng.toFixed(6) : ''}" placeholder="13.7563, 100.5018"></label>
+        <label class="row small"><input type="checkbox" name="active" ${!m || m.active ? 'checked' : ''}> เปิดให้ผู้เล่นเห็น</label>
+        ${edit ? `<button class="btn ${m ? 'sec' : 'primary'}" type="submit">${m ? 'บันทึก' : 'วางมอนสเตอร์'}</button>` : ''}</form>`;
+    $('content').innerHTML = `<div><h1 style="font-size:28px">มอนสเตอร์</h1><p class="muted" style="margin:4px 0 0">วางมอนสเตอร์ตามสถานที่จริง (สวนสาธารณะ ลานกว้าง ห้างร้าน) — อย่าวางบนถนนหรือจุดที่รถวิ่ง ผู้เล่นต้องเดินไปถึงจึงสู้ได้ ได้ EXP เป็นหลัก ส่วน Gold ควรตั้ง 0 หรือน้อย ๆ</p></div>
+      ${edit ? form(null) : ''}
+      <h2 style="font-size:17px">ทั้งหมด (${mons.length})</h2>
+      <div class="kpis" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">${mons.map(form).join('') || '<div class="empty">ยังไม่มีมอนสเตอร์</div>'}</div>`;
+  };
+
   VIEWS.topups = async () => {
     const { data, error } = await sb.from('topup_orders').select('*, p:profiles!topup_orders_user_id_fkey(username)').in('status', ['notified', 'pending']).order('notified_at', { ascending: true, nullsFirst: false }).limit(60);
     if (error) throw error;
@@ -746,6 +769,13 @@ tr.sel td{background:var(--parchment-200)}
       const e = f.elements;
       if (await rpc('save_shop_item', { p_id: e.id.value.trim(), p_name: e.nm.value.trim(), p_kind: e.kind.value, p_slot: e.slot.value || null, p_price: Number(e.price.value), p_currency: e.cur.value, p_stock: e.stock.value ? Number(e.stock.value) : null, p_description: e.desc.value.trim() || null, p_active: e.active.checked })
         && await rpc('set_shop_item_tier', { p_id: e.id.value.trim(), p_tier: e.tier.value }, 'บันทึกสินค้าแล้ว')) reload(); return;
+    }
+    if ('monster' in f.dataset) {
+      const e = f.elements, txt = e.pos.value.trim();
+      const m = txt.match(/@(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || txt.match(/[?&](?:q|ll|query|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/) || txt.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/) || txt.match(/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/);
+      if (!m) return toast('อ่านพิกัดไม่ได้ — ใส่ "ละติจูด, ลองจิจูด" หรือลิงก์ Google Maps แบบเต็ม', true);
+      if (await rpc('admin_set_monster', { p_id: f.dataset.monster || null, p_name: e.name.value.trim(), p_kind: e.kind.value, p_level: Number(e.level.value), p_hp: Number(e.hp.value),
+        p_exp: Number(e.exp.value), p_gold: Number(e.gold.value), p_lat: +m[1], p_lng: +m[2], p_active: e.active.checked }, 'บันทึกมอนสเตอร์แล้ว')) reload(); return;
     }
     if (f.dataset.lictitle) {
       const e = f.elements;

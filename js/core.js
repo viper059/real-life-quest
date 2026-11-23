@@ -31,7 +31,7 @@
     ['withdrawals are closed', 'Gold และ Crystal ถอนเป็นเงินไม่ได้'], ['not enough gold for the posting fee', 'Gold ไม่พอจ่ายค่าลงประกาศ — เติมได้ที่กระเป๋า'], ['unpaid wages outstanding', 'ยังมีค่าจ้างที่ผู้รับงานแจ้งว่าไม่ได้รับ — จ่ายให้เรียบร้อยก่อนโพสต์งานใหม่'], ['set your PromptPay first', 'งานนี้จ่ายทางพร้อมเพย์ — ตั้งพร้อมเพย์รับเงินที่หน้ากระเป๋าก่อน'], ['wait 24 hours', 'แจ้งได้หลังงานเสร็จ 24 ชม.'], ['sold out', 'ของหมดแล้ว'], ['partner not open', 'ยังไม่เปิดแลกกับแอปนี้'], ['promptpay must be', 'พร้อมเพย์ต้องเป็นเบอร์ 10 หลักหรือเลข 13 หลัก'], ['wage must be', 'ค่าจ้างต้องอยู่ระหว่าง 1–100,000 บาท'], ['not signed in', 'กรุณาเข้าสู่ระบบใหม่'], ['urgent window', 'ช่วงเวลาด่วนต้องอยู่ระหว่าง 10 นาทีถึง 24 ชม.'],
     ['due time must be in the future', 'กำหนดส่งต้องเป็นเวลาในอนาคต'], ['top-up not open yet', 'ยังไม่เปิดเติมเงิน'], ['below minimum top-up', 'ต่ำกว่ายอดเติมขั้นต่ำ'],
     ['too many open orders', 'มีคำสั่งเติมเงินค้างอยู่ 3 รายการแล้ว'], ['daily transfer limit', 'เกินวงเงินส่ง Crystal ต่อวัน'], ['user not found', 'ไม่พบชื่อผู้ใช้นี้'],
-    ['already owned', 'มีของชิ้นนี้แล้ว'], ['no free personal slots', 'ช่องเควสต์ส่วนตัวเต็ม — เลเวลอัปหรือซื้อช่องเพิ่ม'], ['not done yet', 'ยังทำไม่ครบ'], ['too soon', 'เร็วเกินไป รออีกสักพัก'], ['outside time window', 'ไม่อยู่ในช่วงเวลาที่ทำได้'], ['done for today', 'ครบจำนวนวันนี้แล้ว'], ['weekdays only', 'เฉพาะวันจันทร์–ศุกร์'], ['earlier step first', 'ต้องเช็กอินไปเรียนหรือไปทำงานก่อน'], ['set your place first', 'ตั้งตำแหน่งก่อน'], ['too far from your saved place', 'ไม่ได้อยู่ที่ตำแหน่งที่ตั้งไว้'], ['place locked', 'ตั้งตำแหน่งใหม่ได้หลังครบ 30 วัน'], ['photo required', 'ต้องแนบรูป'], ['choose your role', 'เลือกก่อนว่าเป็นนักเรียนหรือคนทำงาน'], ['not your role', 'กิจวัตรนี้ไม่ใช่ของบทบาทคุณ'], ['role locked', 'เปลี่ยนบทบาทได้หลังครบ 30 วัน'],
+    ['already owned', 'มีของชิ้นนี้แล้ว'], ['no free personal slots', 'ช่องเควสต์ส่วนตัวเต็ม — เลเวลอัปหรือซื้อช่องเพิ่ม'], ['not done yet', 'ยังทำไม่ครบ'], ['too soon', 'เร็วเกินไป รออีกสักพัก'], ['outside time window', 'ไม่อยู่ในช่วงเวลาที่ทำได้'], ['done for today', 'ครบจำนวนวันนี้แล้ว'], ['weekdays only', 'เฉพาะวันจันทร์–ศุกร์'], ['earlier step first', 'ต้องเช็กอินไปเรียนหรือไปทำงานก่อน'], ['set your place first', 'ตั้งตำแหน่งก่อน'], ['too far from your saved place', 'ไม่ได้อยู่ที่ตำแหน่งที่ตั้งไว้'], ['place locked', 'ตั้งตำแหน่งใหม่ได้หลังครบ 30 วัน'], ['photo required', 'ต้องแนบรูป'], ['too far from monster', 'ยังอยู่ไกลจากมอนสเตอร์เกินไป — เดินเข้าไปใกล้ ๆ ก่อน'], ['monster is resting', 'มอนสเตอร์ตัวนี้กำลังพัก กลับมาสู้ใหม่ทีหลัง'], ['daily monster limit', 'สู้มอนสเตอร์ครบจำนวนวันนี้แล้ว'], ['location jump detected', 'ตำแหน่งเปลี่ยนเร็วผิดปกติ — ลองใหม่อีกครั้งเมื่อ GPS นิ่ง'], ['fight too short', 'การต่อสู้สั้นเกินไป — ลองใหม่'], ['monster not found', 'ไม่พบมอนสเตอร์ตัวนี้'], ['location required', 'ต้องเปิดตำแหน่งก่อน'], ['choose your role', 'เลือกก่อนว่าเป็นนักเรียนหรือคนทำงาน'], ['not your role', 'กิจวัตรนี้ไม่ใช่ของบทบาทคุณ'], ['role locked', 'เปลี่ยนบทบาทได้หลังครบ 30 วัน'],
     ['already opened today', 'เปิดหีบวันนี้แล้ว'], ['requirements not met', 'ยังไม่ผ่านเงื่อนไขเลื่อนขั้น'], ['portfolio required', 'ต้องแนบผลงาน'],
     ['license required', 'อาชีพนี้ต้องเทียบโอนพร้อมใบอนุญาต'], ['endorser rank too low', 'ต้องเป็นเอ็กซ์เพิร์ต (C) ขึ้นไปจึงรับรองได้'],
     ['no job together', 'ต้องเคยทำงานด้วยกันในอาชีพนี้'], ['already submitted', 'ส่งคำขอไปแล้ว'], ['already in a guild', 'คุณอยู่ในกิลด์อื่นแล้ว'],
@@ -229,14 +229,16 @@
   function setQsub(sub) {
     S.qsub = sub;
     document.querySelectorAll('[data-qsub]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.qsub === sub));
-    ['board', 'mine', 'plan'].forEach((s) => $('qsub-' + s).classList.toggle('hidden', s !== sub));
+    ['board', 'mine', 'plan', 'monster'].forEach((s) => $('qsub-' + s).classList.toggle('hidden', s !== sub));
     if (sub === 'plan' && App.loadPlanner) App.loadPlanner();
+    if (sub === 'monster' && App.loadMonsters) App.loadMonsters();
   }
   function route(hash) {
     const h = (hash || location.hash || '').replace(/^#/, '');
     if (!h) return;
     if (h.startsWith('quest-')) { setTab('board'); App.openQuestSheet && App.openQuestSheet(h.slice(6)); }
     else if (h === 'plan') { setTab('board'); setQsub('plan'); }
+    else if (h === 'monster') { setTab('board'); setQsub('monster'); }
     else if (h === 'career') { setTab('char'); setTimeout(() => { const el = $('careerSection'); if (el && el.scrollIntoView) el.scrollIntoView(); }, 100); }
     else if (['board', 'char', 'deck', 'guild', 'wallet'].includes(h)) setTab(h);
   }
