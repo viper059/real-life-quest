@@ -5,7 +5,7 @@
   const SLOTS = [['head', 'หมวก'], ['body', 'เสื้อ'], ['feet', 'รองเท้า'], ['tool', 'เครื่องมือ'], ['acc', 'เครื่องประดับ'], ['frame', 'กรอบโปรไฟล์']];
 
   function levelInfo(exp) {
-    const lv = Math.floor(Math.sqrt(exp / 250)) + 1, from = 250 * (lv - 1) ** 2, to = 250 * lv ** 2;
+    const lv = Math.floor(Math.sqrt(exp / 550)) + 1, from = 550 * (lv - 1) ** 2, to = 550 * lv ** 2;
     return { lv, cur: exp - from, need: to - from, pct: Math.round(((exp - from) / (to - from)) * 100) };
   }
 

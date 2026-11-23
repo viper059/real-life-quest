@@ -97,7 +97,7 @@
     }
   }
   function habitsView(H) {
-    const pct = Math.min(100, Math.round(H.exp_today / H.cap * 100)), full = H.exp_today >= H.cap;
+    const capped = H.cap > 0, pct = capped ? Math.min(100, Math.round(H.exp_today / H.cap * 100)) : 0, full = capped && H.exp_today >= H.cap;
     const role = H.life_role, f = S.habitGrp || 'all';
     const visible = HGRP.filter(([g]) => (g !== 'student' && g !== 'worker') || g === role);
     const groups = visible.filter(([g]) => f === 'all' || f === g);
@@ -106,8 +106,8 @@
     return `<div class="stack">
       <div class="card wood stack">
         <div class="row between"><b style="font-family:var(--font-display);font-size:17px">กิจวัตรวันนี้</b><span class="small" style="color:var(--on-wood-muted)">ตอนนี้ ${esc(H.now)} น.</span></div>
-        <div class="row between small" style="color:var(--on-wood-muted)"><span>EXP จากกิจวัตร</span><span>${H.exp_today} / ${H.cap}</span></div>
-        <div class="bar dark"><div style="width:${pct}%;background:${full ? 'var(--crystal)' : 'var(--exp)'}"></div></div>
+        <div class="row between small" style="color:var(--on-wood-muted)"><span>EXP จากกิจวัตรวันนี้</span><span>${capped ? `${H.exp_today} / ${H.cap}` : `+${H.exp_today}`}</span></div>
+        ${capped ? `<div class="bar dark"><div style="width:${pct}%;background:${full ? 'var(--crystal)' : 'var(--exp)'}"></div></div>` : ''}
         <span class="small" style="color:var(--on-wood-muted)">${full ? 'ครบเพดานวันนี้แล้ว — ทำต่อได้เพื่อสุขภาพ แต่ไม่ได้ EXP เพิ่ม' : 'แต่ละอย่างได้ EXP ไม่เท่ากัน มีจำนวนครั้งต่อวัน ระยะห่าง และช่วงเวลา กันกดรัว'}</span>
       </div>
       <div class="card stack"><b>ฉันเป็น</b>
