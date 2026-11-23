@@ -263,6 +263,24 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sheet').classList.contains('hidden')) closeSheet(); });
 
   /* ---------- notifications + push ---------- */
+  // Short game-style chime for mission notifications while the app is open (browsers allow audio only after a first tap).
+  let actx;
+  document.addEventListener('pointerdown', () => {
+    try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (_) { /* no audio */ }
+  }, { passive: true });
+  const soundOn = () => { try { return localStorage.getItem('rlq_sound') !== '0'; } catch (_) { return true; } };
+  function chime(kind) {
+    try {
+      if (!actx || !soundOn()) return;
+      const t = actx.currentTime;
+      (kind === 'reminder' ? [660, 520] : [784, 1047, 1319]).forEach((f, i) => {
+        const o = actx.createOscillator(), g = actx.createGain(), at = t + i * 0.11;
+        o.type = 'triangle'; o.frequency.value = f;
+        g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.18, at + 0.02); g.gain.exponentialRampToValueAtTime(0.001, at + 0.35);
+        o.connect(g); g.connect(actx.destination); o.start(at); o.stop(at + 0.4);
+      });
+    } catch (_) { /* sound is optional */ }
+  }
   function urlB64ToUint8Array(base64) {
     const pad = '='.repeat((4 - base64.length % 4) % 4);
     const raw = atob((base64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
@@ -286,10 +304,17 @@
         <span aria-hidden="true" style="width:8px;height:8px;border-radius:50%;flex:none;background:${n.read_at ? 'transparent' : 'var(--danger)'}"></span>
         <div style="flex:1;min-width:0"><b style="font-weight:600">${esc(n.title)}</b>${n.body ? `<div class="small muted">${esc(n.body)}</div>` : ''}</div>
         <span class="small muted" style="white-space:nowrap">${ago(n.created_at)}</span></a>`).join('') : '<div class="empty">ยังไม่มีการแจ้งเตือน</div>';
-    const pushOn = typeof Notification !== 'undefined' && Notification.permission === 'granted';
+    const pushOn = typeof Notification !== 'undefined' && Notification.permission === 'granted', P = S.profile || {};
     openSheet('การแจ้งเตือน', `<div class="stack">
-      ${pushOn ? '' : `<div class="card row"><span style="flex:1">รับแจ้งเตือนแม้ไม่ได้เปิดแอป (มีคนรับงาน, ได้เงิน, ข้อความใหม่)</span><button class="btn action sm" id="pushBtn" type="button">เปิดแจ้งเตือน</button></div>`}
+      ${pushOn ? '' : `<div class="card row"><span style="flex:1">รับแจ้งเตือนแม้ไม่ได้เปิดแอป (ภารกิจสำเร็จ, ภารกิจที่ยังไม่ทำ, มีคนรับงาน, ได้เงิน)</span><button class="btn action sm" id="pushBtn" type="button">เปิดแจ้งเตือน</button></div>`}
+      <div class="card stack" style="gap:8px">
+        <label class="row small"><input type="checkbox" id="nfSuccess" ${P.notify_success === false ? '' : 'checked'}> แจ้งเตือนเมื่อทำภารกิจสำเร็จ (บอก EXP ที่ได้)</label>
+        <label class="row small"><input type="checkbox" id="nfRemind" ${P.notify_remind === false ? '' : 'checked'}> แจ้งเตือนทวงภารกิจที่ยังไม่ได้ทำ</label>
+        <label class="row small"><input type="checkbox" id="nfSound" ${soundOn() ? 'checked' : ''}> มีเสียงเตือนตอนเปิดแอปอยู่</label></div>
       <div class="card" style="padding:4px 14px">${list}</div></div>`);
+    const savePrefs = () => rpc('set_notify_prefs', { p_success: $('nfSuccess').checked, p_remind: $('nfRemind').checked });
+    $('nfSuccess').onchange = savePrefs; $('nfRemind').onchange = savePrefs;
+    $('nfSound').onchange = (e) => { try { localStorage.setItem('rlq_sound', e.target.checked ? '1' : '0'); } catch (_) { /* ignore */ } if (e.target.checked) chime('done'); };
     const pb = $('pushBtn'); if (pb) pb.onclick = enablePush;
     $('sheetBody').querySelectorAll('[data-notif]').forEach((a) => a.addEventListener('click', () => setTimeout(closeSheet, 0)));
     if (S.unread) sb.rpc('mark_notifications_read').then(() => refresh(['notifs']));
@@ -305,7 +330,7 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'quest_applications' }, () => later(['quests']))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wallets', filter: 'user_id=eq.' + S.user.id }, () => later(['me', 'money']))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + S.user.id }, (p) => {
-        if (p.new) toast(p.new.title); later(['notifs', 'me']);
+        if (p.new) { toast(p.new.title); if (p.new.kind === 'done' || p.new.kind === 'reminder') chime(p.new.kind); } later(['notifs', 'me']);
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => {
         if (p.new && S.openQuest === p.new.quest_id && App.refreshQuestSheet) App.refreshQuestSheet();

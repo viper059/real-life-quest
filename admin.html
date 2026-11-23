@@ -149,6 +149,7 @@ tr.sel td{background:var(--parchment-200)}
     { id: 'careers', label: 'เลื่อนขั้นอาชีพ', need: ['c.review', 'view'] },
     { id: 'licenses', label: 'สมาคมวิชาชีพ', need: ['c.review', 'view'] },
     { id: 'monsters', label: 'มอนสเตอร์', need: ['q.review', 'view'] },
+    { id: 'habits', label: 'เวลาทวงกิจวัตร', need: ['q.review', 'view'] },
     { id: 'topups', label: 'ยืนยันเติมเงิน', need: ['m.topup', 'view'] },
     { id: 'shop', label: 'ร้านค้า Crystal', need: ['m.shop', 'view'] },
     { id: 'guilds', label: 'กิลด์และกองทุน', need: ['g.fund', 'view'] },
@@ -622,6 +623,17 @@ tr.sel td{background:var(--parchment-200)}
       <div class="kpis" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">${mons.map(form).join('') || '<div class="empty">ยังไม่มีมอนสเตอร์</div>'}</div>`;
   };
 
+  VIEWS.habits = async () => {
+    const { data, error } = await sb.rpc('admin_habits');
+    if (error) throw error;
+    const edit = can('q.review');
+    $('content').innerHTML = `<div><h1 style="font-size:28px">เวลาทวงกิจวัตร</h1><p class="muted" style="margin:4px 0 0">ตั้งเวลาที่ระบบส่งแจ้งเตือน “ภารกิจ … ยังไม่สำเร็จ” ให้ผู้เล่นที่เปิดแจ้งเตือนไว้และยังไม่ได้ทำกิจวัตรนั้นในวันนี้ ส่งวันละครั้ง (ภายใน 15 นาทีหลังเวลาที่ตั้ง) เว้นว่างไว้ = ไม่ทวง</p></div>
+      <div class="tbl-wrap"><table style="min-width:520px"><thead><tr><th>กิจวัตร</th><th>EXP</th><th>เวลาทวง</th><th></th></tr></thead><tbody>
+      ${data.map((h) => `<tr><td><b>${esc(h.title)}</b>${h.active ? '' : ' <span class="small muted">(ปิดอยู่)</span>'}</td><td>${h.exp}</td>
+        <td colspan="2"><form class="row" data-remind="${esc(h.id)}" style="gap:8px"><input type="time" name="t" value="${h.remind_at ? h.remind_at.slice(0, 5) : ''}" ${edit ? '' : 'disabled'} style="max-width:140px">
+        ${edit ? '<button class="btn sec sm" type="submit">บันทึก</button>' : ''}</form></td></tr>`).join('')}</tbody></table></div>`;
+  };
+
   VIEWS.topups = async () => {
     const { data, error } = await sb.from('topup_orders').select('*, p:profiles!topup_orders_user_id_fkey(username)').in('status', ['notified', 'pending']).order('notified_at', { ascending: true, nullsFirst: false }).limit(60);
     if (error) throw error;
@@ -769,6 +781,9 @@ tr.sel td{background:var(--parchment-200)}
       const e = f.elements;
       if (await rpc('save_shop_item', { p_id: e.id.value.trim(), p_name: e.nm.value.trim(), p_kind: e.kind.value, p_slot: e.slot.value || null, p_price: Number(e.price.value), p_currency: e.cur.value, p_stock: e.stock.value ? Number(e.stock.value) : null, p_description: e.desc.value.trim() || null, p_active: e.active.checked })
         && await rpc('set_shop_item_tier', { p_id: e.id.value.trim(), p_tier: e.tier.value }, 'บันทึกสินค้าแล้ว')) reload(); return;
+    }
+    if (f.dataset.remind) {
+      if (await rpc('admin_set_habit_reminder', { p_habit: f.dataset.remind, p_time: f.elements.t.value || null }, 'บันทึกเวลาทวงแล้ว')) reload(); return;
     }
     if ('monster' in f.dataset) {
       const e = f.elements, txt = e.pos.value.trim();
