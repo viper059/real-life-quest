@@ -269,6 +269,35 @@
     try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (_) { /* no audio */ }
   }, { passive: true });
   const soundOn = () => { try { return localStorage.getItem('rlq_sound') !== '0'; } catch (_) { return true; } };
+  // Spoken announcements in Thai (uses the phone's own Thai voice). Falls back to the chime when no Thai voice exists.
+  let thVoice = null;
+  function pickVoice() {
+    try {
+      const v = speechSynthesis.getVoices().filter((x) => /^th/i.test(x.lang));
+      thVoice = v.find((x) => /kanya|narisa|premwadee|female/i.test(x.name)) || v[0] || null;
+    } catch (_) { thVoice = null; }
+  }
+  if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+  function spokenText(n) {
+    const title = n.title || '', body = n.body || '', q = (title.match(/“([^”]+)”/) || [])[1] || title;
+    const exp = body.match(/\+(\d+) EXP/), gold = body.match(/\+(\d+) G/);
+    if (n.kind === 'reminder') return 'ภารกิจ ' + q + ' ยังไม่สำเร็จ';
+    let t = /^เควสต์/.test(title) ? 'เควสต์ ' + q + ' สำเร็จแล้ว' : /ส่งแล้ว/.test(title) ? 'ส่งภารกิจ ' + q + ' แล้ว รอผู้ปกครองรับรอง' : 'ทำภารกิจ ' + q + ' สำเร็จแล้ว';
+    if (exp) t += ' ได้รับ ' + exp[1] + ' เอ็กซ์พี';
+    if (gold) t += ' และ ' + gold[1] + ' โกลด์';
+    return t;
+  }
+  function announce(n) {
+    if (!soundOn()) return;
+    if (thVoice) {
+      try {
+        const u = new SpeechSynthesisUtterance(spokenText(n));
+        u.lang = 'th-TH'; u.voice = thVoice; u.rate = 1; u.volume = 1;
+        speechSynthesis.cancel(); speechSynthesis.speak(u); return;
+      } catch (_) { /* fall back to the chime */ }
+    }
+    chime(n.kind);
+  }
   function chime(kind) {
     try {
       if (!actx || !soundOn()) return;
@@ -310,11 +339,11 @@
       <div class="card stack" style="gap:8px">
         <label class="row small"><input type="checkbox" id="nfSuccess" ${P.notify_success === false ? '' : 'checked'}> แจ้งเตือนเมื่อทำภารกิจสำเร็จ (บอก EXP ที่ได้)</label>
         <label class="row small"><input type="checkbox" id="nfRemind" ${P.notify_remind === false ? '' : 'checked'}> แจ้งเตือนทวงภารกิจที่ยังไม่ได้ทำ</label>
-        <label class="row small"><input type="checkbox" id="nfSound" ${soundOn() ? 'checked' : ''}> มีเสียงเตือนตอนเปิดแอปอยู่</label></div>
+        <label class="row small"><input type="checkbox" id="nfSound" ${soundOn() ? 'checked' : ''}> มีเสียงพูดอ่านภารกิจตอนเปิดแอปอยู่</label></div>
       <div class="card" style="padding:4px 14px">${list}</div></div>`);
     const savePrefs = () => rpc('set_notify_prefs', { p_success: $('nfSuccess').checked, p_remind: $('nfRemind').checked });
     $('nfSuccess').onchange = savePrefs; $('nfRemind').onchange = savePrefs;
-    $('nfSound').onchange = (e) => { try { localStorage.setItem('rlq_sound', e.target.checked ? '1' : '0'); } catch (_) { /* ignore */ } if (e.target.checked) chime('done'); };
+    $('nfSound').onchange = (e) => { try { localStorage.setItem('rlq_sound', e.target.checked ? '1' : '0'); } catch (_) { /* ignore */ } if (e.target.checked) announce({ kind: 'done', title: '“ดื่มน้ำ 1 แก้ว” สำเร็จ', body: '+2 EXP' }); };
     const pb = $('pushBtn'); if (pb) pb.onclick = enablePush;
     $('sheetBody').querySelectorAll('[data-notif]').forEach((a) => a.addEventListener('click', () => setTimeout(closeSheet, 0)));
     if (S.unread) sb.rpc('mark_notifications_read').then(() => refresh(['notifs']));
@@ -330,7 +359,7 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'quest_applications' }, () => later(['quests']))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'wallets', filter: 'user_id=eq.' + S.user.id }, () => later(['me', 'money']))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: 'user_id=eq.' + S.user.id }, (p) => {
-        if (p.new) { toast(p.new.title); if (p.new.kind === 'done' || p.new.kind === 'reminder') chime(p.new.kind); } later(['notifs', 'me']);
+        if (p.new) { toast(p.new.title); if (p.new.kind === 'done' || p.new.kind === 'reminder') announce(p.new); } later(['notifs', 'me']);
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => {
         if (p.new && S.openQuest === p.new.quest_id && App.refreshQuestSheet) App.refreshQuestSheet();
