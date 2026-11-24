@@ -418,11 +418,59 @@
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; showInstall('กดติดตั้ง แล้วเปิดได้จากหน้าจอโฮมเหมือนแอปทั่วไป', true); });
-  window.addEventListener('appinstalled', () => { deferredPrompt = null; $('installCard').classList.add('hidden'); $('installTop').classList.add('hidden'); toast('ติดตั้งแล้ว — เปิดได้จากไอคอน RLQ บนหน้าจอโฮม'); });
+  window.addEventListener('appinstalled', () => { deferredPrompt = null; try { speak('Welcome to Real Life Quest'); } catch (_) { /* needs a recent tap */ } $('installCard').classList.add('hidden'); $('installTop').classList.add('hidden'); toast('ติดตั้งแล้ว — เปิดได้จากไอคอน RLQ บนหน้าจอโฮม'); });
   async function doInstall() { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; }
   $('installBtn').onclick = doInstall; $('installTop').onclick = doInstall;
   if (inAppBrowser) showInstall('เปิดลิงก์นี้ใน Safari หรือ Chrome ก่อน แล้วจะติดตั้งได้ (กดเมนู ⋯ › เปิดในเบราว์เซอร์)', false);
   else if (isIOS) showInstall('กดปุ่มแชร์ (สี่เหลี่ยมมีลูกศรขึ้น) แล้วเลือก "เพิ่มไปยังหน้าจอโฮม"', false);
+
+  /* ---------- launch splash: welcome + "Status on" voice, then the app opens ---------- */
+  // Browsers only allow sound after a tap, so the installed app opens on a "tap to start" screen.
+  function speak(text, done) {
+    let fin = false; const end = () => { if (!fin) { fin = true; if (done) done(); } };
+    try {
+      if (!('speechSynthesis' in window) || !soundOn()) return end();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US'; u.rate = 0.85; u.pitch = 0.7; u.volume = 1; u.onend = end; u.onerror = end;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+      setTimeout(end, 4500);   // never get stuck if the device has no voice
+    } catch (_) { end(); }
+  }
+  function startupSound() {
+    try {
+      if (!actx || !soundOn()) return;
+      const t = actx.currentTime;
+      [392, 523, 659, 784, 1047].forEach((f, i) => {
+        const o = actx.createOscillator(), g = actx.createGain(), at = t + i * 0.09;
+        o.type = 'sawtooth'; o.frequency.value = f;
+        g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(0.07, at + 0.02); g.gain.exponentialRampToValueAtTime(0.001, at + 0.5);
+        o.connect(g); g.connect(actx.destination); o.start(at); o.stop(at + 0.55);
+      });
+    } catch (_) { /* sound is optional */ }
+  }
+  (function splash() {
+    let seen = false; try { seen = sessionStorage.getItem('rlq_splash') === '1'; } catch (_) { /* ignore */ }
+    const preview = /[?&]splash=1/.test(location.search);
+    if (!(standalone || preview) || (seen && !preview)) return;
+    let first = true; try { first = localStorage.getItem('rlq_welcomed') !== '1'; } catch (_) { /* ignore */ }
+    const el = document.createElement('div'); el.className = 'splash';
+    el.innerHTML = `<div class="sp-card"><div class="sp-logo" aria-hidden="true">⚔️</div><div class="sp-title">REAL LIFE QUEST</div>
+      <div class="sp-sub">${first ? 'ยินดีต้อนรับสู่เกมชีวิตจริง' : 'พร้อมออกผจญภัยอีกครั้ง'}</div>
+      <button class="btn action" id="spGo" type="button">แตะเพื่อเริ่ม</button></div><div class="sp-status" aria-hidden="true">STATUS ON</div>`;
+    document.body.appendChild(el); document.body.style.overflow = 'hidden';
+    let started = false;
+    const open = () => {
+      el.classList.add('open');
+      setTimeout(() => { el.remove(); document.body.style.overflow = ''; }, 800);
+    };
+    el.querySelector('#spGo').onclick = () => {
+      if (started) return; started = true;
+      try { sessionStorage.setItem('rlq_splash', '1'); localStorage.setItem('rlq_welcomed', '1'); } catch (_) { /* ignore */ }
+      el.classList.add('go'); startupSound();
+      const status = () => speak('Status on', () => setTimeout(open, 250));
+      if (first) speak('Welcome to Real Life Quest', status); else status();
+    };
+  })();
 
   /* ---------- boot ---------- */
   function boot() {

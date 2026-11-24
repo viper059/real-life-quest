@@ -187,3 +187,16 @@ label.row.small{flex-wrap:nowrap;align-items:flex-start}label.row.small input{fl
 .b-num{position:absolute;transform:translate(-50%,-50%);font-family:var(--font-rpg);font-weight:700;font-size:24px;pointer-events:none;text-shadow:0 2px 0 #000,0 0 6px #000;animation:bfloat .9s ease-out forwards}
 .b-num.hit{color:#fff}.b-num.crit{color:#ffd24a;font-size:32px}.b-num.hurt{color:#ff6a5a}.b-num.heal{color:#6ae09a}.b-num.miss{color:#c9b48a;font-size:18px}
 @keyframes bfloat{0%{opacity:0;margin-top:0}15%{opacity:1}100%{opacity:0;margin-top:-70px}}
+.splash{position:fixed;inset:0;z-index:5000;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at 50% 35%,#5a3d27 0%,#2a1b11 75%);color:var(--on-wood,#fbf3df);text-align:center}
+.sp-card{display:flex;flex-direction:column;align-items:center;gap:10px;transition:opacity .3s,transform .3s}
+.sp-logo{font-size:64px;line-height:1;animation:spfloat 2.4s ease-in-out infinite}
+.sp-title{font-family:var(--font-rpg,Cinzel,serif);font-weight:700;font-size:28px;letter-spacing:.12em;color:var(--gold-500,#e8b13a);text-shadow:0 2px 0 #000}
+.sp-sub{opacity:.85;margin-bottom:10px}
+.sp-status{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);font-family:var(--font-rpg,Cinzel,serif);font-weight:700;font-size:34px;letter-spacing:.3em;color:#8ff7ff;text-shadow:0 0 14px #5ff2ff;opacity:0;pointer-events:none}
+.splash.go .sp-card{opacity:0;transform:scale(.9);pointer-events:none}
+.splash.go .sp-status{animation:spstatus 1.6s ease-out forwards}
+.splash.open{animation:spopen .8s ease-in forwards;pointer-events:none}
+@keyframes spfloat{50%{transform:translateY(-8px)}}
+@keyframes spstatus{0%{opacity:0;letter-spacing:.8em}30%{opacity:1}100%{opacity:1;letter-spacing:.3em}}
+@keyframes spopen{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.25)}}
+@media (prefers-reduced-motion:reduce){.sp-logo{animation:none}.splash.open{animation:spfade .3s forwards}@keyframes spfade{to{opacity:0}}}
