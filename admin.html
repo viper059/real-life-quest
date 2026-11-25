@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Mitr:wght@400;500;600&display=swap">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="vendor/supabase.js"></script>
 <style>
 :root{
   --wood-900:#2a1b11;--wood-800:#3a2618;--wood-700:#5a3d27;--wood-line:#8a6a3a;
@@ -200,7 +200,6 @@ tr.sel td{background:var(--parchment-200)}
     const head = (q) => q.then((r) => r.count || 0);
     if (can('q.review', 'view')) c.quests = await head(sb.from('quests').select('id', { count: 'exact', head: true }).eq('moderation', 'pending').neq('status', 'suspended'));
     if (can('q.reports', 'view')) c.reports = await head(sb.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'open'));
-    if (false) c.withdrawals = await head(sb.from('withdrawals').select('id', { count: 'exact', head: true }).in('status', ['pending', 'second_approval']));
     if (can('u.kyc', 'view')) c.kyc = await head(sb.from('kyc_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'));
     if (can('q.dispute', 'view')) c.disputes = await head(sb.from('disputes').select('id', { count: 'exact', head: true }).eq('status', 'open'));
     if (can('q.dispute', 'view')) c.unpaid = await head(sb.from('quests').select('id', { count: 'exact', head: true }).eq('payment_status', 'unpaid_reported'));
@@ -235,7 +234,6 @@ tr.sel td{background:var(--parchment-200)}
     const cards = [];
     if ('quests' in c) cards.push(['เควสต์รอตรวจ', c.quests, 'quests']);
     if ('reports' in c) cards.push(['รายงานที่ยังเปิด', c.reports, 'reports']);
-    if ('withdrawals' in c) cards.push(['คำขอถอนรอตัดสิน', c.withdrawals, 'withdrawals']);
     if ('guilds' in c) cards.push(['เคลมกองทุนรอจ่าย', c.guilds, 'guilds']);
     if ('kyc' in c) cards.push(['รอยืนยันตัวตน', c.kyc, 'kyc']);
     if ('disputes' in c) cards.push(['ข้อพิพาทที่เปิดอยู่', c.disputes, 'disputes']);
@@ -305,28 +303,6 @@ tr.sel td{background:var(--parchment-200)}
       ${data.length ? `<div class="tbl-wrap"><table style="min-width:620px"><thead><tr><th>เควสต์</th><th>เหตุผล</th><th>ผู้รายงาน</th><th>เมื่อ</th><th></th></tr></thead><tbody>
       ${data.map((r) => `<tr><td><b>${esc(r.quest && r.quest.title)}</b><br><span class="small muted">${esc(r.quest && r.quest.status)}</span></td><td>${esc(r.reason)}</td><td>@${esc(r.reporter && r.reporter.username)}</td><td class="small muted">${when(r.created_at)}</td>
         <td style="text-align:right">${can('q.reports') ? `<button class="btn sec" data-resolve="${r.id}">ปิดเคส</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">ไม่มีรายงานที่ค้างอยู่</div>'}`;
-  };
-
-  VIEWS.withdrawals = async () => {
-    const { data, error } = await sb.from('withdrawals').select('*, user:profiles!withdrawals_user_id_fkey(username,quests_done,created_at), first:profiles!withdrawals_first_approver_fkey(username)')
-      .in('status', ['pending', 'second_approval']).order('created_at');
-    if (error) throw error;
-    const dual = Number(S.settings.withdraw_dual_threshold || 5000), rate = parseFloat(S.settings.gold_thb_rate);
-    const total = data.reduce((a, w) => a + Number(w.amount_gold), 0);
-    const edit = can('m.withdraw');
-    $('content').innerHTML = `
-      <div><h1 style="font-size:28px">อนุมัติถอนเงิน</h1><p class="muted" style="margin:4px 0 0">ตั้งแต่ ${num(dual)} G ต้องมีผู้อนุมัติ 2 คน · อนุมัติแล้วให้โอนเงินจริงนอกระบบตามบัญชีที่ผู้ใช้ยืนยัน</p></div>
-      <div class="kpis"><div class="card kpi"><div class="small muted">รอตัดสิน</div><div class="v" style="color:var(--gold-ink)">${num(total)} G</div><div class="small muted">${data.length} คำขอ${rate > 0 ? ' · ≈ ' + (total * rate).toLocaleString('th-TH') + ' บาท' : ''}</div></div></div>
-      ${data.length ? `<div class="tbl-wrap"><table style="min-width:760px"><thead><tr><th>ผู้ใช้</th><th style="text-align:right">จำนวน</th><th>บัญชี</th><th>สถานะ</th><th></th></tr></thead><tbody>
-      ${data.map((w) => {
-        const big = Number(w.amount_gold) >= dual, mine = w.user_id === S.user.id, sameFirst = w.first_approver === S.user.id;
-        const st = w.status === 'second_approval' ? `รอคนที่ 2 · คนแรก @${esc(w.first && w.first.username)}` : big ? 'รอคนที่ 1 (ยอดสูง)' : 'รออนุมัติ';
-        const btns = !edit ? '' : mine ? '<span class="small muted">คำขอของคุณเอง</span>' : sameFirst ? '<span class="small muted">รอคนอื่นยืนยัน</span>'
-          : `<div class="row" style="justify-content:flex-end"><button class="btn action" data-wd="${w.id}" data-ok="1">${w.status === 'second_approval' ? 'ยืนยันคนที่ 2' : 'อนุมัติ'}</button><button class="btn sec" data-wd="${w.id}" data-ok="0">ปฏิเสธ</button></div>`;
-        return `<tr><td><b>@${esc(w.user && w.user.username)}</b><br><span class="small muted">บัญชี ${w.user ? ageDays(w.user.created_at) : '?'} วัน · ${w.user ? num(w.user.quests_done) : 0} เควสต์</span></td>
-          <td class="gold" style="text-align:right">${num(w.amount_gold)} G${rate > 0 ? `<br><span class="small muted" style="font-family:var(--font-body);font-weight:400">≈ ${(w.amount_gold * rate).toLocaleString('th-TH')} บาท</span>` : ''}</td>
-          <td>${esc(w.bank_label)}<br><span class="small muted">${when(w.created_at)}</span></td><td class="small" style="font-weight:600">${st}</td><td>${btns}</td></tr>`;
-      }).join('')}</tbody></table></div>` : '<div class="empty">ไม่มีคำขอถอนค้าง</div>'}`;
   };
 
   VIEWS.guilds = async () => {
@@ -727,15 +703,6 @@ tr.sel td{background:var(--parchment-200)}
       return;
     }
     if (t.dataset.resolve) { t.disabled = true; if (await rpc('resolve_report', { p_report: Number(t.dataset.resolve) }, 'ปิดเคสแล้ว')) reload(); else t.disabled = false; return; }
-    if (t.dataset.wd) {
-      const approve = t.dataset.ok === '1';
-      if (!approve && !confirm('ปฏิเสธคำขอนี้? Gold จะคืนให้ผู้ใช้')) return;
-      t.disabled = true;
-      const r = await rpc('decide_withdrawal', { p_id: t.dataset.wd, p_approve: approve, p_note: null },
-        (s) => ({ paid: 'อนุมัติแล้ว — โอนเงินจริงให้ผู้ใช้ได้เลย', second_approval: 'บันทึกแล้ว รอผู้อนุมัติคนที่ 2', rejected: 'ปฏิเสธแล้ว คืน Gold แล้ว' }[s] || s));
-      if (r) reload(); else t.disabled = false;
-      return;
-    }
     if (t.dataset.gc) {
       const pay = t.dataset.pay === '1';
       if (!confirm(pay ? 'จ่ายเคลมนี้จากกองทุนกิลด์?' : 'ไม่จ่ายเคลมนี้? เงินจะคงอยู่ในกองทุน')) return;

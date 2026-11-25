@@ -16,8 +16,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Mitr:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="app.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="vendor/qrcode.js"></script>
 </head>
 <body>
 
@@ -154,6 +154,8 @@
   </div>
 </div>
 
+<div id="bootMsg" class="boot-msg" role="status">กำลังโหลดแอป…</div>
+<noscript><p style="padding:24px;text-align:center">แอปนี้ต้องเปิด JavaScript</p></noscript>
 <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
 <script src="js/core.js"></script>
@@ -163,7 +165,8 @@
 <script src="js/social.js"></script>
 <script src="js/wallet.js"></script>
 <script src="js/planner.js"></script>
+<script src="js/food.js"></script>
 <script src="js/monsters.js"></script>
-<script>App.boot();</script>
+<script>App.boot(); setTimeout(function () { var b = document.getElementById("bootMsg"); if (b && getComputedStyle(b).display !== "none") b.textContent = "โหลดไม่สำเร็จ ลองรีเฟรชหน้านี้อีกครั้ง"; }, 9000);</script>
 </body>
 </html>

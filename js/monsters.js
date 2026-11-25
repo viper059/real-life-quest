@@ -121,14 +121,17 @@
     const ov = document.createElement('div'); ov.className = 'battle';
     ov.innerHTML = `<div class="b-top"><div class="b-mon"><b>${esc(m.name)}</b> <span class="rank">Lv.${m.level}</span><div class="bar b-bar"><div id="bMHp" style="width:100%;background:var(--danger)"></div></div></div><button class="btn sec sm" id="bFlee" type="button">🏃 หนี</button></div>
       <div class="b-stage" id="bStage"><div class="b-hint small" id="bHint">แตะมอนสเตอร์เพื่อเริ่มโจมตี</div></div>
-      <div class="b-hud"><div class="b-me"><div class="small"><b>Viper</b> Lv.${lv}</div>
+      <div class="b-hud"><div class="b-me"><div class="small"><b>${esc((App.S.profile && (App.S.profile.display_name || App.S.profile.username)) || 'นักผจญภัย')}</b> Lv.${lv}</div>
         <div class="b-line"><span>HP</span><div class="bar b-bar"><div id="bHp" style="width:100%;background:#3aa86a"></div></div><span id="bHpT">${maxHp}</span></div>
         <div class="b-line"><span>SP</span><div class="bar b-bar"><div id="bSp" style="width:100%;background:#3a7ad8"></div></div><span id="bSpT">${maxSp}</span></div></div>
         <div class="b-skills"><button class="b-sk" id="bAtk" type="button">⚔️<small>โจมตี</small></button><button class="b-sk" id="bBash" type="button">💥<small>Bash · 10SP</small></button><button class="b-sk" id="bHeal" type="button">✨<small>ฮีล · 15SP</small></button></div></div>`;
     document.body.appendChild(ov); document.body.style.overflow = 'hidden';
     const $b = (x) => ov.querySelector('#' + x), stage = $b('bStage');
 
-    const renderer = new T.WebGLRenderer({ antialias: true, alpha: true }); renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); stage.prepend(renderer.domElement);
+    let renderer;
+    try { renderer = new T.WebGLRenderer({ antialias: true, alpha: true }); }
+    catch (e) { ov.remove(); document.body.style.overflow = ''; return toast('เครื่องนี้ยังเปิดฉากต่อสู้ 3 มิติไม่ได้', true); }
+    renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); stage.prepend(renderer.domElement);
     const scene = new T.Scene(), cam = new T.PerspectiveCamera(48, 1, 0.1, 80);
     scene.add(new T.HemisphereLight(0xfff3d6, 0x3a2618, 1.0)); const dl = new T.DirectionalLight(0xffffff, 0.8); dl.position.set(4, 8, 6); scene.add(dl);
     const ground = new T.Mesh(new T.CylinderGeometry(5.5, 5.8, 0.3, 40), new T.MeshStandardMaterial({ color: 0x6b4a2e })); ground.position.y = -0.15; scene.add(ground);

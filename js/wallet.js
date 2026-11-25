@@ -1,7 +1,6 @@
 /* Real-life Quest — wallet: Gold (pays for work) and Crystal (giftable, shop) — neither can be withdrawn, PromptPay top-up, shop. */
 (() => {
   const { sb, S, TX, tier, tierTag, $, esc, num, ago, when, toast, rpc, refresh, loaders, renderers, openSheet, closeSheet, upload, promptpayPayload, qrSvg } = App;
-  const WSTATUS = { pending: 'รออนุมัติ', second_approval: 'รอผู้อนุมัติคนที่ 2', paid: 'โอนแล้ว', rejected: 'ไม่ผ่าน · คืน Gold แล้ว' };
   const OSTATUS = { pending: 'รอโอนเงิน', notified: 'แจ้งโอนแล้ว · รอตรวจสลิป', paid: 'สำเร็จ', rejected: 'ไม่ผ่าน', cancelled: 'ยกเลิก' };
   const KIND = { frame: 'กรอบโปรไฟล์', title: 'ฉายา', costume: 'ชุดแต่งตัว', boost: 'เพิ่มความสามารถ' };
   const baht = (n) => Number(n).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 });

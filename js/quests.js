@@ -279,7 +279,7 @@
         <div style="flex:1 1 200px;min-width:0"><b style="font-weight:600">${esc(nameOf(a.w))}</b> <span class="small muted">${workerCareerLine(a.w)}</span>
           ${a.note ? `<div class="small" style="color:var(--ink-soft)">${esc(a.note)}</div>` : ''}<div class="small muted">สมัคร ${ago(a.created_at)}</div></div>
         <button class="btn action sm" data-a="choose" data-w="${a.worker_id}">เลือกคนนี้</button></div>`).join('') : '<span class="small muted">ยังไม่มีคนสมัคร — ระบบจะแจ้งเตือนเมื่อมีคนสมัคร</span>'}
-        <button class="btn sec" data-a="cancel">ยกเลิกเควสต์ (คืน Gold)</button></div>`);
+        <button class="btn sec" data-a="cancel">${q.family_id ? 'ยกเลิกเควสต์ (คืน Gold)' : 'ยกเลิกเควสต์'}</button></div>`);
     }
 
     // Work sessions (check-in and out).
@@ -334,7 +334,7 @@
     if ((isPoster || isWorker) && ['in_progress', 'submitted'].includes(q.status) && !q.dispute_open) parts.push(`<details class="card"><summary class="small" style="cursor:pointer;font-weight:600">มีปัญหา? เปิดข้อพิพาท</summary>
       <form class="stack" data-form="dispute" style="margin-top:10px"><label class="f">เล่าปัญหา<textarea name="reason" rows="3" required minlength="5" maxlength="1000"></textarea></label>
       <label class="f">แนบหลักฐาน (ไม่บังคับ)<input type="file" name="file" accept="image/*,application/pdf"></label>
-      <span class="small muted">Gold ที่ล็อกไว้จะถูกพักไว้จนทีมงานตัดสิน ทีมงานอ่านแชตได้</span><button class="btn danger" type="submit">เปิดข้อพิพาท</button></form></details>`);
+      <span class="small muted">${q.family_id ? 'Gold ที่ล็อกไว้จะถูกพักไว้จนทีมงานตัดสิน' : 'ทีมงานจะช่วยตัดสิน'} · ทีมงานอ่านแชตได้</span><button class="btn danger" type="submit">เปิดข้อพิพาท</button></form></details>`);
 
     // Reviews.
     if (q.status === 'completed' && (isPoster || isWorker)) {

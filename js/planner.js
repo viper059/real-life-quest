@@ -19,7 +19,8 @@
   function dayView(D) {
     const lvPct = Math.round((D.exp - D.level_start_exp) / Math.max(1, D.next_level_exp - D.level_start_exp) * 100);
     const slots = D.tier.personal_slots + (D.extra_personal_slots || 0), used = D.personal.length;
-    return `<div class="grid" style="align-items:start">
+    const fresh = D.exp === 0 && !D.streak;
+    return `${fresh ? `<div class="card hello stack" style="margin-bottom:12px"><b style="font-family:var(--font-display);font-size:18px">ยินดีต้อนรับนักผจญภัย! 🌟</b><span>เริ่มง่ายๆ แค่ดื่มน้ำ 1 แก้ว หรือกินข้าวเช้า ก็ได้ EXP และ Gold แล้ว เอา Gold ไปซื้อของกินอร่อยๆ ได้ที่ร้านอาหาร</span><div class="row"><button class="btn primary" data-psub="habit" type="button">เริ่มทำกิจวัตรแรก</button><button class="btn sec" data-psub="food" type="button">🍜 ดูร้านอาหาร</button></div></div>` : ''}<div class="grid" style="align-items:start">
       <div class="card wood stack">
         <div class="row between"><b style="font-family:var(--font-display);font-size:17px">วันนี้</b><span class="small" style="color:var(--on-wood-muted)">${new Date(D.day).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short' })}</span></div>
         <div class="row between small" style="color:var(--on-wood-muted)"><span>Lv.${D.level} → ${D.level + 1}</span><span>${num(D.exp - D.level_start_exp)} / ${num(D.next_level_exp - D.level_start_exp)} EXP</span></div>
@@ -108,6 +109,8 @@
         <div class="row between"><b style="font-family:var(--font-display);font-size:17px">กิจวัตรวันนี้</b><span class="small" style="color:var(--on-wood-muted)">ตอนนี้ ${esc(H.now)} น.</span></div>
         <div class="row between small" style="color:var(--on-wood-muted)"><span>EXP จากกิจวัตรวันนี้</span><span>${capped ? `${H.exp_today} / ${H.cap}` : `+${H.exp_today}`}</span></div>
         ${capped ? `<div class="bar dark"><div style="width:${pct}%;background:${full ? 'var(--crystal)' : 'var(--exp)'}"></div></div>` : ''}
+        ${App.buffBar(H)}
+        <span class="small" style="color:var(--on-wood-muted)">ทำกิจวัตรได้ Gold ด้วย — เอาไปซื้อของกินที่แท็บ “🍜 ร้านอาหาร” เพื่อเพิ่มพลัง</span>
         <span class="small" style="color:var(--on-wood-muted)">${full ? 'ครบเพดานวันนี้แล้ว — ทำต่อได้เพื่อสุขภาพ แต่ไม่ได้ EXP เพิ่ม' : 'แต่ละอย่างได้ EXP ไม่เท่ากัน มีจำนวนครั้งต่อวัน ระยะห่าง และช่วงเวลา กันกดรัว'}</span>
       </div>
       <div class="card stack"><b>ฉันเป็น</b>
@@ -132,7 +135,7 @@
           </div>`; }).join('')}</div>`; }).join('')}
     </div>`;
   }
-  const habitMsg = (x) => x.status === 'pending' ? 'บันทึกแล้ว รอผู้ปกครองรับรอง' : x.exp ? `+${x.exp} EXP${x.capped ? ' (ถึงเพดานวันนี้)' : ''}` : 'บันทึกแล้ว (ครบเพดาน EXP วันนี้)';
+  const habitMsg = (x) => (x.status !== 'pending' && x.exp && App.pop && App.pop('+' + x.exp + ' EXP' + (x.gold ? '  +' + x.gold + ' G' : '')), x.status === 'pending' ? 'บันทึกแล้ว รอผู้ปกครองรับรอง' : x.exp ? `+${x.exp} EXP${x.gold ? ' · +' + x.gold + ' G' : ''}${x.capped ? ' (ถึงเพดานวันนี้)' : ''}` : 'บันทึกแล้ว (ครบเพดาน EXP วันนี้)');
 
   /* ---------- GPS walking quests ---------- */
   function openWalkTracker(h) {
@@ -179,13 +182,14 @@
     const el = $('qsub-plan');
     if (S.qsub !== 'plan') return;
     if (!S.day) { el.innerHTML = '<div class="empty" style="margin-top:14px">กำลังโหลดแผน…</div>'; return; }
-    el.innerHTML = `<div class="row" style="margin:14px 0 12px">${[['day', 'วันนี้'], ['habit', 'กิจวัตร'], ['month', 'เดือนนี้'], ['personal', 'ส่วนตัว']].map(([k, v]) => `<button class="pill" data-psub="${k}" aria-pressed="${S.psub === k}">${v}</button>`).join('')}</div>
-      ${S.psub === 'day' ? dayView(S.day) : S.psub === 'habit' ? (S.habits ? habitsView(S.habits) : '') : S.psub === 'month' ? (S.month ? monthView(S.month) : '') : personalView(S.day)}`;
+    el.innerHTML = `<div class="row" style="margin:14px 0 12px">${[['day', 'วันนี้'], ['habit', 'กิจวัตร'], ['food', '🍜 ร้านอาหาร'], ['month', 'เดือนนี้'], ['personal', 'ส่วนตัว']].map(([k, v]) => `<button class="pill" data-psub="${k}" aria-pressed="${S.psub === k}">${v}</button>`).join('')}</div>
+      ${S.psub === 'day' ? dayView(S.day) : S.psub === 'habit' ? (S.habits ? habitsView(S.habits) : '') : S.psub === 'food' ? (S.foods ? App.foodView() : '<div class="empty">กำลังเปิดร้าน…</div>') : S.psub === 'month' ? (S.month ? monthView(S.month) : '') : personalView(S.day)}`;
   }
   renderers.push(renderPlan);
+  App.renderPlan = renderPlan;
 
   $('qsub-plan').addEventListener('click', async (ev) => {
-    const s = ev.target.closest('[data-psub]'); if (s) { S.psub = s.dataset.psub; return renderPlan(); }
+    const s = ev.target.closest('[data-psub]'); if (s) { S.psub = s.dataset.psub; renderPlan(); if (S.psub === 'food') refresh(['food']); return; }
     const g = ev.target.closest('[data-hgrp]'); if (g) { S.habitGrp = g.dataset.hgrp; return renderPlan(); }
     const rl = ev.target.closest('[data-hrole]');
     if (rl) {

@@ -17,9 +17,9 @@
   const RANK_LABEL = { F: 'ผู้เริ่มต้น', E: 'อาเดปต์', D: 'เวเทอรัน', C: 'เอ็กซ์เพิร์ต', B: 'มาสเตอร์', A: 'แกรนด์มาสเตอร์', S: 'เลเจนด์' };
   const TX = {
     quest_escrow: 'ล็อกรางวัลเควสต์', quest_paid: 'จ่ายรางวัลเควสต์', quest_reward: 'รางวัลเควสต์', quest_refund: 'คืน Gold เควสต์',
-    post_fee: 'ค่าลงประกาศงาน', exchange_in: 'แลกเครดิตจากแอปอื่น', withdraw_hold: 'ล็อกเพื่อถอน', withdraw_paid: 'ถอนสำเร็จ', withdraw_refund: 'คืน Gold (ถอนไม่ผ่าน)',
+    post_fee: 'ค่าลงประกาศงาน', exchange_in: 'แลกเครดิตจากแอปอื่น', withdraw_hold: 'ล็อก Gold (ระบบเดิม)', withdraw_paid: 'รายการเดิม (ระบบเดิม)', withdraw_refund: 'คืน Gold (ระบบเดิม)',
     guild_contribute: 'สมทบกองทุนกิลด์', guild_refund: 'คืนเงินกองทุน (ปิดกิลด์)', guild_claim_paid: 'ได้รับเงินเคลมกองทุน',
-    topup_gold: 'เติม Gold', topup_crystal: 'เติม Crystal', crystal_sent: 'ส่ง Crystal', crystal_received: 'ได้รับ Crystal', shop_buy: 'ซื้อของในร้าน'
+    topup_gold: 'เติม Gold', topup_crystal: 'เติม Crystal', crystal_sent: 'ส่ง Crystal', crystal_received: 'ได้รับ Crystal', shop_buy: 'ซื้อของในร้าน', habit_gold: 'Gold จากกิจวัตร', food_buy: 'ซื้ออาหาร'
   };
   const ERR = [
     ['not enough gold', 'Gold ไม่พอ'], ['not enough crystal', 'Crystal ไม่พอ'], ['quest not available', 'เควสต์นี้ไม่ว่างแล้ว'],
@@ -57,6 +57,11 @@
   const hours = (min) => { min = Number(min || 0); const h = Math.floor(min / 60), m = min % 60; return h ? (m ? `${h} ชม. ${m} นาที` : `${h} ชม.`) : `${m} นาที`; };
   const rating = (sum, count) => count ? (sum / count).toFixed(1) + ' ★ (' + count + ')' : 'ยังไม่มีรีวิว';
 
+  // floating reward text (+EXP / +Gold) so a finished habit feels good
+  function pop(text) {
+    const e = document.createElement('div'); e.className = 'pop'; e.textContent = text; e.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(e); setTimeout(() => e.remove(), 1200);
+  }
   let toastTimer;
   function toast(msg, isErr) {
     const t = $('toast'); t.textContent = msg; t.classList.toggle('err', !!isErr); t.classList.remove('hidden');
@@ -525,7 +530,7 @@
 
   window.App = {
     sb, S, CATS, RANKS, RANK_LABEL, TX, $, esc, num, ago, when, hours, rating, toast, errText, rpc, refresh, render,
-    loaders, renderers, setTab, setQsub, openSheet, closeSheet, route, distanceKm, geolocate, parseMapsLink, mapsUrl, navUrl,
+    pop, loaders, renderers, setTab, setQsub, openSheet, closeSheet, route, distanceKm, geolocate, parseMapsLink, mapsUrl, navUrl,
     upload, signedUrl, promptpayPayload, qrSvg, boot, enablePush, tier, tierTag
   };
 })();
