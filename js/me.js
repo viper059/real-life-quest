@@ -245,14 +245,14 @@
   function renderPack() {
     const el = $('packPanel'), P = S.pack; if (!el) return;
     if (!P) { el.innerHTML = ''; return; }
-    const gold = Number(S.wallet ? S.wallet.gold : 0), left = P.daily_max - P.drawn_today, can = gold >= P.price && left > 0;
+    const cry = Number(S.wallet ? S.wallet.crystal : 0), left = P.daily_max - P.drawn_today, can = cry >= P.price && left > 0;
     const total = (P.odds || []).reduce((a, o) => a + o.weight, 0) || 1;
     el.innerHTML = `<div class="card wood stack">
       <div class="row between"><b style="font-family:var(--font-display);font-size:17px">🎴 ตู้สุ่มการ์ดอาชีพ</b><span class="small" style="color:var(--on-wood-muted)">วันนี้สุ่มแล้ว ${P.drawn_today} / ${P.daily_max}</span></div>
-      <span class="small" style="color:var(--on-wood-muted)">นอกจากการ์ดเริ่มต้น ไม่มีการแจกฟรี — ได้จากการสุ่มด้วย Gold, ซื้อตรงจากคลังด้านล่าง หรือปลดล็อกจากการทำงานจริงครบตามเงื่อนไข การ์ดซ้ำคืน ${num(P.refund)} G</span>
+      <span class="small" style="color:var(--on-wood-muted)">นอกจากการ์ดเริ่มต้น ไม่มีการแจกฟรี — สุ่มได้ด้วย Crystal เท่านั้น (Crystal ต้องเติมเงินซื้อ ตอนนี้ยังไม่เปิดเติม) ซื้อตรงด้วย Gold จากคลังด้านล่าง หรือปลดล็อกจากการทำงานจริง การ์ดซ้ำคืน ${num(P.refund)} C</span>
       <div class="row" style="gap:6px;flex-wrap:wrap">${(P.odds || []).map((o) => `<span class="fchip gold-chip">${esc(o.rarity)} ${Math.round(o.weight / total * 1000) / 10}%</span>`).join('')}</div>
-      <span class="small" style="color:var(--on-wood-muted)">การันตีระดับอีปิกขึ้นไป ภายใน ${P.pity} ครั้ง (สุ่มมาแล้ว ${Math.min(P.since_epic, P.pity)} ครั้งนับจากอีปิกล่าสุด) · การ์ดและ Gold แลกเป็นเงินสดไม่ได้</span>
-      <button type="button" class="btn primary" data-draw="1" ${can ? '' : 'disabled'}>${left <= 0 ? 'วันนี้สุ่มครบแล้ว' : `สุ่มการ์ด ${num(P.price)} G`}</button>
+      <span class="small" style="color:var(--on-wood-muted)">การันตีระดับอีปิกขึ้นไป ภายใน ${P.pity} ครั้ง (สุ่มมาแล้ว ${Math.min(P.since_epic, P.pity)} ครั้งนับจากอีปิกล่าสุด) · การ์ด Gold และ Crystal แลกเป็นเงินสดไม่ได้</span>
+      <button type="button" class="btn primary" data-draw="1" ${can ? '' : 'disabled'}>${left <= 0 ? 'วันนี้สุ่มครบแล้ว' : `สุ่มการ์ด ${num(P.price)} C`}</button>
     </div>`;
   }
   function renderDeck() {
@@ -352,7 +352,7 @@
     const b = ev.target.closest('[data-draw]'); if (!b) return;
     b.disabled = true;
     const r = await rpc('draw_card');
-    if (r && r.card) openSheet('ได้การ์ดแล้ว!', `<div class="stack" style="text-align:center"><div class="card wood stack"><span class="small" style="color:var(--gold-500)">${esc(r.rarity)}</span><b style="font-family:var(--font-display);font-size:24px">${esc(r.name)}</b><span class="small" style="color:#d9ede4">EXP +${r.exp_bonus_pct}% ${r.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + esc((CATS[r.category] || {}).label || '')}</span></div>${r.dupe ? `<p class="small">ซ้ำกับที่มีอยู่ — คืน ${num(r.refund)} G</p>` : '<p class="small">เพิ่มเข้าคลังแล้ว ไปใส่ในช่องการ์ดได้เลย</p>'}<button type="button" class="btn primary" id="packOk">ตกลง</button></div>`);
+    if (r && r.card) openSheet('ได้การ์ดแล้ว!', `<div class="stack" style="text-align:center"><div class="card wood stack"><span class="small" style="color:var(--gold-500)">${esc(r.rarity)}</span><b style="font-family:var(--font-display);font-size:24px">${esc(r.name)}</b><span class="small" style="color:#d9ede4">EXP +${r.exp_bonus_pct}% ${r.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + esc((CATS[r.category] || {}).label || '')}</span></div>${r.dupe ? `<p class="small">ซ้ำกับที่มีอยู่ — คืน ${num(r.refund)} C</p>` : '<p class="small">เพิ่มเข้าคลังแล้ว ไปใส่ในช่องการ์ดได้เลย</p>'}<button type="button" class="btn primary" id="packOk">ตกลง</button></div>`);
     const ok = document.getElementById('packOk'); if (ok) ok.onclick = () => App.closeSheet();
   });
   $('cardList').addEventListener('click', async (ev) => {
