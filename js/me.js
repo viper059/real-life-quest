@@ -1,7 +1,7 @@
 /* Real-life Quest — character (level, stats, equipment), identity check, career ranks, job-card deck. */
 (() => {
   const { sb, S, CATS, tier, tierTag, RANKS, RANK_LABEL, $, esc, num, when, hours, rating, toast, rpc, refresh, loaders, renderers, openSheet, closeSheet, upload } = App;
-  const STATS = [['str', 'STR'], ['agi', 'AGI'], ['vit', 'VIT'], ['int', 'INT'], ['dex', 'DEX'], ['luk', 'LUK']];
+  const STATS = [['str', 'STR', 'แรง'], ['agi', 'AGI', 'คล่องตัว'], ['vit', 'VIT', 'ทนทาน'], ['int', 'INT', 'ปัญญา'], ['dex', 'DEX', 'ฝีมือ'], ['luk', 'LUK', 'โชค']];
   const SLOTS = [['head', 'หมวก'], ['body', 'เสื้อ'], ['feet', 'รองเท้า'], ['tool', 'เครื่องมือ'], ['acc', 'เครื่องประดับ'], ['frame', 'กรอบโปรไฟล์']];
 
   function levelInfo(exp) {
@@ -77,11 +77,11 @@
   }
   function careerCard(c) {
     const occ = S.occupations.find((o) => o.id === c.occupation) || { label: c.occupation };
-    if (!c.next) return `<div class="card stack"><div class="row between"><b>${esc(occ.label)}</b><span class="rank">RANK ${c.rank}</span></div><span class="small">${esc(c.rank_label)} — ขั้นสูงสุดแล้ว</span>${licenseSection(c)}</div>`;
+    if (!c.next) return `<div class="card stack"><div class="row between"><b>${esc(occ.label)}</b><span class="rank">ขั้น ${c.rank}</span></div><span class="small">${esc(c.rank_label)} — ขั้นสูงสุดแล้ว</span>${licenseSection(c)}</div>`;
     const pct = (a, b) => b ? Math.min(100, Math.round(a / b * 100)) : 100;
     const timeOk = c.months_in_rank >= c.min_months;
     return `<div class="card stack">
-      <div class="row between"><b style="font-size:16px">${esc(occ.label)}</b><span class="rank">RANK ${c.rank} · ${esc(c.rank_label)}</span></div>
+      <div class="row between"><b style="font-size:16px">${esc(occ.label)}</b><span class="rank">ขั้น ${c.rank} · ${esc(c.rank_label)}</span></div>
       <span class="small muted">อยู่ขั้นนี้ ${c.months_in_rank} เดือน · ขั้นต่อไป ${c.next} (${esc(c.next_label)})${c.imported ? ' · เทียบโอนประสบการณ์แล้ว' : ''}</span>
       <div class="bar" role="progressbar" aria-label="ความคืบหน้าเลื่อนขั้น" aria-valuenow="${pct(c.jobs, c.jobs_needed)}" aria-valuemax="100"><div style="width:${pct(c.jobs, c.jobs_needed)}%;background:var(--teal-600)"></div></div>
       <ul class="small" style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px">
@@ -106,6 +106,7 @@
     return `<div class="section" id="careerSection"><div class="row between"><h2 style="font-size:19px">อาชีพและขั้น</h2></div>
       <p class="small muted" style="margin:0">ผู้รับงานต้องตรงกับอาชีพและถึงขั้นที่งานกำหนด · งานทั่วไปและขั้น F ใครก็รับได้หลังยืนยันตัวตน · F→E ≥ 3 เดือน, E→D ≥ 2 ปี, เอ็กซ์เพิร์ต→มาสเตอร์ ≥ 5 ปี</p>
       <div class="grid" style="align-items:start">${S.careers.map(careerCard).join('') || '<div class="empty"><b>สถานะปัจจุบัน: โนวิส</b><br><span class="small muted">ยังไม่มีอาชีพ — เลือกอาชีพแรกด้านล่างเพื่อเริ่มเส้นทางอาชีพ</span></div>'}</div>
+      <details class="dash" style="margin-top:8px"><summary class="small" style="cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center">➕ เริ่มอาชีพใหม่ · เทียบโอนประสบการณ์ · รับรองเพื่อนร่วมงาน</summary>
       <div class="grid" style="align-items:start">
         ${avail.length ? `<form class="card stack" id="startCareer"><b>เริ่มอาชีพใหม่ (ขั้น F)</b>
           <label class="f">อาชีพ<select name="occ">${avail.filter((o) => !o.license_required).map((o) => `<option value="${o.id}">${esc(o.label)}</option>`).join('')}</select></label>
@@ -127,7 +128,7 @@
           <label class="f">อาชีพ<select name="occ">${S.occupations.map((o) => `<option value="${o.id}">${esc(o.label)}</option>`).join('')}</select></label>
           <label class="f">คำรับรองสั้น ๆ (ไม่บังคับ)<input name="note" maxlength="300"></label>
           <button class="btn sec" type="submit">รับรอง</button></form>
-      </div></div>`;
+      </div></details></div>`;
   }
 
   /* ---------- character tab ---------- */
@@ -159,11 +160,11 @@
         </div>
         <div class="card stack"><div class="row between"><h2 style="font-size:16px">ค่าสถานะ</h2><span class="small" style="font-weight:600;color:${pts ? 'var(--gold-ink)' : 'var(--ink-muted)'}">แต้มเหลือ ${pts}</span></div>
           <div class="row" style="justify-content:center">${radarSvg(STATS.map(([k]) => p[k] + (b[k] || 0)))}</div>
-          <div class="grid" id="statPanel" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${STATS.map(([k, Lb]) => `
+          <div class="grid" id="statPanel" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${STATS.map(([k, Lb, Th]) => `
             <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;background:var(--parchment-200);border-radius:8px;padding:6px 8px">
-              <span style="font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--ink-muted)">${Lb}</span>
+              <span style="font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--ink-muted)">${Lb}<span class="stat-th">${Th}</span></span>
               <span style="font-family:var(--font-rpg);font-weight:700;font-size:16px">${p[k] + (b[k] || 0)}</span>
-              ${pts ? `<button class="btn sec" data-stat="${k}" aria-label="เพิ่ม ${Lb}" style="min-height:32px;padding:0 8px">+</button>` : ''}</div>`).join('')}</div>
+              ${pts ? `<button class="btn sec" data-stat="${k}" aria-label="เพิ่ม ${Lb} ${Th}" style="min-height:32px;padding:0 8px">+</button>` : ''}</div>`).join('')}</div>
           <span class="small muted">ได้ 3 แต้มทุกเลเวลอัป · การ์ดในเด็คเพิ่มค่าสถานะ</span></div>
       </div></div>
       ${renderCareers()}
@@ -238,7 +239,7 @@
     const main = cardById(d.main_card);
     $('deckPanel').innerHTML = `<div class="grid" style="align-items:start">
       ${main ? `<div style="background:#2f4a3e;border:3px solid var(--gold-500);border-radius:14px;padding:16px;color:var(--on-wood);display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 0 var(--brass-600);min-height:200px;justify-content:flex-end">
-        <span style="font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--gold-500)">MAIN JOB</span>
+        <span style="font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--gold-500)">อาชีพหลัก · MAIN JOB</span>
         <h2 style="font-size:24px">${esc(main.name)}</h2>
         <span class="small" style="color:#d9ede4">EXP +${main.exp_bonus_pct}% ${main.category === 'general' ? 'ทุกเควสต์' : 'เมื่อทำเควสต์' + esc((CATS[main.category] || {}).label || '')}</span></div>` : '<div class="empty">ยังไม่ได้เลือกการ์ดหลัก</div>'}
       <form id="deckForm" class="card stack">

@@ -58,7 +58,7 @@
       <div class="row">
         ${urgent ? `<span class="tag" style="background:var(--danger);color:#fff">ด่วน · ${mins} นาที</span>` : ''}
         <span class="tag" style="background:${c.bg};color:${c.fg}">${c.label}</span>
-        <span class="rank">RANK ${esc(q.rank)}</span>
+        ${q.rank !== 'F' ? `<span class="rank">ขั้น ${esc(q.rank)}</span>` : ''}
         ${q.remote ? '<span class="tag" style="background:var(--parchment-200);color:var(--ink-soft)">ออนไลน์</span>' : d != null ? `<span class="small muted">${d < 1 ? Math.round(d * 1000) + ' ม.' : d.toFixed(1) + ' กม.'}</span>` : ''}
       </div>
       <h3>${esc(q.title)}</h3>
@@ -135,7 +135,7 @@
       const urgent = urgentLeft(q) > 0;
       // Approximate area only (about 1 km); the exact pin is shown to the chosen worker.
       L.circle(ll, { radius: 600, color: urgent ? '#b3261e' : '#8a5a0b', fillColor: urgent ? '#b3261e' : '#e8b13a', fillOpacity: 0.25, weight: 2 })
-        .addTo(layer).bindPopup(`<b>${esc(q.title)}</b><br>${payOf(q)} · RANK ${esc(q.rank)}<br><a href="#quest-${q.id}">ดูรายละเอียด</a>`);
+        .addTo(layer).bindPopup(`<b>${esc(q.title)}</b><br>${payOf(q)} · ขั้น ${esc(q.rank)}<br><a href="#quest-${q.id}">ดูรายละเอียด</a>`);
     });
     if (pts.length && !S.myPos) map.fitBounds(pts, { padding: [30, 30], maxZoom: 13 });
   }
@@ -230,7 +230,7 @@
 
     parts.push(`<div class="card stack">
       <div class="row">${mins > 0 ? `<span class="tag" style="background:var(--danger);color:#fff">ด่วน · ${mins} นาที</span>` : ''}
-        <span class="tag" style="background:${c.bg};color:${c.fg}">${c.label}</span><span class="rank">RANK ${esc(q.rank)}</span>
+        <span class="tag" style="background:${c.bg};color:${c.fg}">${c.label}</span><span class="rank">ขั้น ${esc(q.rank)}</span>
         <span class="small" style="margin-left:auto;font-weight:600">${esc(q.dispute_open ? 'มีข้อพิพาท · รอทีมงานตัดสิน' : QSTATUS[q.status])}</span></div>
       ${q.description ? `<p style="margin:0;white-space:pre-line">${esc(q.description)}</p>` : ''}
       <dl class="kv">

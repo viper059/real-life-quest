@@ -51,16 +51,18 @@
   function renderGuild() {
     const el = $('guildPanel');
     if (!S.myGuild) {
-      el.innerHTML = `<div class="grid" style="align-items:start">
+      el.innerHTML = `<div class="card hello stack" style="margin-bottom:12px"><b>กิลด์คืออะไร?</b><span class="small">กลุ่มเพื่อนที่ช่วยกันสมทบกองทุนกลาง ถ้าสมาชิกคนไหนเจอเหตุจำเป็น กิลด์โหวตจ่ายช่วยได้ · เข้ากิลด์ที่เปิดรับก่อน หรือตั้งกิลด์ของตัวเอง</span></div>
+      <div class="grid" style="align-items:start">
+<div class="card stack" style="gap:4px"><h2 style="font-size:16px">กิลด์ที่เปิดรับ</h2>
+          ${S.guilds.length ? S.guilds.map((g) => { const n = S.memberCount[g.id] || 0, h = health(g); return `<div class="tx"><div style="flex:1;min-width:0"><b>${esc(g.name)}</b><div class="small muted">${n}/${g.member_cap} คน · กองทุน ${num(g.fund_gold)} G · ${h.label}</div></div>
+            ${n < g.member_cap ? `<button class="btn action sm" data-gjoin="${g.id}">เข้าร่วม</button>` : '<span class="small muted">เต็ม</span>'}</div>`; }).join('') : '<div class="empty">ยังไม่มีกิลด์ — ตั้งกิลด์แรกเลย</div>'}
+        </div>
         <form id="guildCreate" class="card stack"><h2 style="font-size:16px">ตั้งกิลด์ใหม่</h2>
           <label class="f">ชื่อกิลด์<input name="n" required minlength="3" maxlength="40"></label>
           <label class="f">คำขวัญ (ไม่บังคับ)<input name="m" maxlength="120"></label>
           <button class="btn primary" type="submit">ตั้งกิลด์</button>
           <span class="small muted">กิลด์มีกองทุนประกันร่วม สมาชิกช่วยกันสมทบ และโหวตจ่ายเมื่อมีคนเดือดร้อนจากงาน</span></form>
-        <div class="card stack" style="gap:4px"><h2 style="font-size:16px">กิลด์ที่เปิดรับ</h2>
-          ${S.guilds.length ? S.guilds.map((g) => { const n = S.memberCount[g.id] || 0, h = health(g); return `<div class="tx"><div style="flex:1;min-width:0"><b>${esc(g.name)}</b><div class="small muted">${n}/${g.member_cap} คน · กองทุน ${num(g.fund_gold)} G · ${h.label}</div></div>
-            ${n < g.member_cap ? `<button class="btn action sm" data-gjoin="${g.id}">เข้าร่วม</button>` : '<span class="small muted">เต็ม</span>'}</div>`; }).join('') : '<div class="empty">ยังไม่มีกิลด์ — ตั้งกิลด์แรกเลย</div>'}
-        </div></div>`;
+      </div>`;
       return;
     }
     const g = S.myGuild, h = health(g), n = S.gMembers.length, leader = S.myGuildRole === 'leader';
@@ -95,7 +97,13 @@
       </div>`;
   }
 
+  function famBadge() {
+    const n = S.famRole === 'parent' ? (S.famPending || []).length + (S.famHabits || []).length : 0;
+    const b = $('guildBadge'); if (b) { b.textContent = n > 9 ? '9+' : n; b.classList.toggle('hidden', !n); b.setAttribute('aria-label', n + ' รายการรอรับรอง'); }
+    const a = $('famAlert'); if (a) a.innerHTML = n ? `<button type="button" class="card hello row between" style="width:100%;text-align:left;margin-bottom:10px" onclick="document.getElementById('familyPanel').scrollIntoView({behavior:'smooth'})"><span><b>มี ${n} รายการรอคุณรับรอง</b><br><span class="small">ลูกส่งกิจวัตร/เป้าหมายมา · แตะเพื่อดู</span></span><span aria-hidden="true">↓</span></button>` : '';
+  }
   function renderFamily() {
+    famBadge();
     const el = $('familyPanel');
     if (!S.family) {
       el.innerHTML = `<div class="grid" style="align-items:start">

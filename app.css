@@ -234,3 +234,7 @@ label.row.small{flex-wrap:nowrap;align-items:flex-start}label.row.small input{fl
 details.more>summary{cursor:pointer;min-height:36px;display:flex;align-items:center;font-size:13px;color:var(--on-wood-muted);list-style:none}
 details.more>summary::-webkit-details-marker{display:none}
 @media (prefers-reduced-motion:reduce){.b-hint,.b-num,.sp-status,.skeleton,.btn,.pill,.seg button{animation:none!important;transition:none!important}}
+
+nav.tabs button{position:relative}
+nav.tabs .badge{top:2px;right:calc(50% - 26px)}
+.stat-th{display:block;font-family:var(--font-body);font-weight:500;font-size:11px;color:var(--ink-soft);line-height:1.2}
