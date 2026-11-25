@@ -20,7 +20,7 @@
     const lvPct = Math.round((D.exp - D.level_start_exp) / Math.max(1, D.next_level_exp - D.level_start_exp) * 100);
     const slots = D.tier.personal_slots + (D.extra_personal_slots || 0), used = D.personal.length;
     const fresh = D.exp === 0 && !D.streak;
-    return `${fresh ? `<div class="card hello stack" style="margin-bottom:12px"><b style="font-family:var(--font-display);font-size:18px">ยินดีต้อนรับนักผจญภัย! 🌟</b><span>เริ่มง่ายๆ แค่ดื่มน้ำ 1 แก้ว หรือกินข้าวเช้า ก็ได้ EXP และ Gold แล้ว เอา Gold ไปซื้อของกินอร่อยๆ ได้ที่ร้านอาหาร</span><div class="row"><button class="btn primary" data-psub="habit" type="button">เริ่มทำกิจวัตรแรก</button><button class="btn sec" data-psub="food" type="button">🍜 ดูร้านอาหาร</button></div></div>` : ''}<div class="grid" style="align-items:start">
+    return `${fresh ? `<div class="card hello stack" style="margin-bottom:12px"><b style="font-family:var(--font-display);font-size:18px">ยินดีต้อนรับนักผจญภัย! 🌟</b><span>เริ่มง่ายๆ แค่ดื่มน้ำ 1 แก้ว หรือกินข้าวเช้า ก็ได้ EXP และ Gold แล้ว เอา Gold ไปซื้อของกินอร่อยๆ ได้ที่ร้านอาหาร</span><div class="row"><button class="btn primary" data-gohabits="1" type="button">เริ่มทำกิจวัตรแรก</button><button class="btn sec" data-psub="food" type="button">🍜 ดูร้านอาหาร</button></div></div>` : ''}<div class="grid" style="align-items:start">
       <div class="card wood stack">
         <div class="row between"><b style="font-family:var(--font-display);font-size:17px">วันนี้</b><span class="small" style="color:var(--on-wood-muted)">${new Date(D.day).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short' })}</span></div>
         <div class="row between small" style="color:var(--on-wood-muted)"><span>Lv.${D.level} → ${D.level + 1}</span><span>${num(D.exp - D.level_start_exp)} / ${num(D.next_level_exp - D.level_start_exp)} EXP</span></div>
@@ -29,7 +29,7 @@
           <button class="btn primary${D.chest_ready ? ' chest-ready' : ''}" data-p="chest" ${D.chest_ready ? '' : 'disabled'}>${D.chest_claimed ? 'เปิดหีบวันนี้แล้ว' : `เปิดหีบ +${D.chest_exp} EXP`}</button></div>
         <span class="small" style="color:var(--on-wood-muted)">ทำภารกิจรายวันครบทุกช่อง + เป้าหมายส่วนตัวรายวันครบ → เปิดหีบได้ · ต่อเนื่องทุกวันได้โบนัสเพิ่มสูงสุด +50%</span>
       </div>
-      <div class="card stack"><div class="row between"><h2 style="font-size:16px">ภารกิจรายวัน</h2><span class="small muted">${D.dailies.length} ช่อง (Lv.${D.level})</span></div>
+      <div class="card stack"><div class="row between"><h2 style="font-size:16px">ภารกิจรายวัน (เปิดหีบ)</h2><span class="small muted">${D.dailies.length} ช่อง (Lv.${D.level})</span></div>
         ${D.dailies.map((q) => `<div class="tx">${check(q.claimed)}<div style="flex:1;min-width:0"><div>${esc(q.title)}</div><div class="row small muted">${bar(q.progress, q.target)} ${q.progress}/${q.target}</div></div>
           ${q.claimed ? `<span class="small muted">+${q.exp}</span>` : `<button class="btn ${q.progress >= q.target ? 'action' : 'sec'} sm" data-p="daily" data-id="${q.id}" ${q.progress >= q.target ? '' : 'disabled'}>รับ +${q.exp}</button>`}</div>`).join('')}
         <span class="small muted">เลเวลสูงขึ้นปลดช่องภารกิจเพิ่ม · รีเซ็ตเที่ยงคืน (เวลาไทย)</span></div>
@@ -40,6 +40,28 @@
           : '<div class="empty">ยังไม่มีเป้าหมาย — เพิ่มที่แท็บ "ส่วนตัว"</div>'}
         <span class="small muted">EXP จากเป้าหมายส่วนตัวมีเพดานต่อวัน เพื่อให้เลเวลมาจากงานจริงเป็นหลัก</span></div>
     </div>`;
+  }
+
+  // "Today" = level/streak card, habits (most-used), then daily missions + personal goals
+  function todayView(D) {
+    const full = dayView(D), G = '<div class="grid" style="align-items:start">';
+    const i = full.indexOf(G); if (i < 0) return full;
+    const rest = full.slice(i + G.length), J = '<div class="card stack"><div class="row between"><h2 style="font-size:16px">ภารกิจรายวัน';
+    const j = rest.indexOf(J); if (j < 0) return full;
+    const H = S.habits, lvPct = Math.round((D.exp - D.level_start_exp) / Math.max(1, D.next_level_exp - D.level_start_exp) * 100);
+    const head = `<div class="card wood stack">
+        <div class="row between"><b style="font-family:var(--font-display);font-size:17px">สรุปวันนี้</b><span class="small" style="color:var(--on-wood-muted)">${new Date(D.day).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' })} · ต่อเนื่อง <b style="font-family:var(--font-rpg);color:var(--gold-500);font-size:16px">${D.streak}</b> วัน</span></div>
+        <div class="row between small" style="color:var(--on-wood-muted)"><span>Lv.${D.level} → ${D.level + 1}</span><span>${num(D.exp - D.level_start_exp)} / ${num(D.next_level_exp - D.level_start_exp)} EXP</span></div>
+        <div class="bar dark"><div style="width:${lvPct}%;background:var(--exp)"></div></div>
+        ${H ? App.buffBar(H) : ''}
+        <div class="row between"><span class="small" style="color:var(--on-wood-muted)">${H ? 'EXP กิจวัตรวันนี้ +' + H.exp_today : ''}</span>
+          <button class="btn primary sm${D.chest_ready ? ' chest-ready' : ''}" data-p="chest" ${D.chest_ready ? '' : 'disabled'}>${D.chest_claimed ? 'เปิดหีบวันนี้แล้ว' : `เปิดหีบ +${D.chest_exp} EXP`}</button></div>
+        <details class="more"><summary>ℹ️ กติกา</summary><div class="stack" style="gap:4px">
+          <span class="small" style="color:var(--on-wood-muted)">ทำภารกิจรายวันครบทุกช่อง + เป้าหมายส่วนตัวรายวันครบ → เปิดหีบได้ · ต่อเนื่องทุกวันได้โบนัสเพิ่มสูงสุด +50%</span>
+          <span class="small" style="color:var(--on-wood-muted)">ทำกิจวัตรได้ EXP และ Gold — เอา Gold ไปซื้อของกินที่แท็บ “🍜 ร้านอาหาร” · แต่ละกิจวัตรมีจำนวนครั้งต่อวัน ระยะห่าง และช่วงเวลา กันกดรัว</span></div></details>
+      </div>`;
+    const habits = H ? habitsView(H, true) : '<div class="stack" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div>';
+    return full.slice(0, i) + '<div class="stack">' + head + habits + '</div><div style="height:12px"></div>' + G + rest.slice(j);
   }
 
   function monthView(M) {
@@ -97,15 +119,15 @@
       default: return h.block || '';
     }
   }
-  function habitsView(H) {
+  function habitsView(H, noHead) {
     const capped = H.cap > 0, pct = capped ? Math.min(100, Math.round(H.exp_today / H.cap * 100)) : 0, full = capped && H.exp_today >= H.cap;
     const role = H.life_role, f = S.habitGrp || 'all';
     const visible = HGRP.filter(([g]) => (g !== 'student' && g !== 'worker') || g === role);
     const groups = visible.filter(([g]) => f === 'all' || f === g);
     const needPlace = role === 'student' ? ['school', 'home'] : role === 'worker' ? ['work', 'home'] : [];
     const roleLocked = H.role_locked_until && new Date(H.role_locked_until) > Date.now();
-    return `<div class="stack">
-      <div class="card wood stack">
+    return `<div class="stack" id="habitList">
+      ${noHead ? '' : `      <div class="card wood stack">
         <div class="row between"><b style="font-family:var(--font-display);font-size:17px">กิจวัตรวันนี้</b><span class="small" style="color:var(--on-wood-muted)">ตอนนี้ ${esc(H.now)} น.</span></div>
         <div class="row between small" style="color:var(--on-wood-muted)"><span>EXP จากกิจวัตรวันนี้</span><span>${capped ? `${H.exp_today} / ${H.cap}` : `+${H.exp_today}`}</span></div>
         ${capped ? `<div class="bar dark"><div style="width:${pct}%;background:${full ? 'var(--crystal)' : 'var(--exp)'}"></div></div>` : ''}
@@ -114,7 +136,7 @@
         <details class="more"><summary>ℹ️ กติกากิจวัตร</summary>
           <div class="stack" style="gap:4px"><span class="small" style="color:var(--on-wood-muted)">ทำกิจวัตรได้ Gold ด้วย — เอาไปซื้อของกินที่แท็บ “🍜 ร้านอาหาร” เพื่อเพิ่มพลัง</span>
           <span class="small" style="color:var(--on-wood-muted)">แต่ละอย่างได้ EXP ไม่เท่ากัน มีจำนวนครั้งต่อวัน ระยะห่าง และช่วงเวลา กันกดรัว · “เพดาน” คือ EXP สูงสุดที่รับจากกิจวัตรได้ในหนึ่งวัน</span></div></details>
-      </div>
+      </div>`}
       ${!role ? `      <div class="card stack"><b>ฉันเป็น</b>
         <div class="row">${[['student', '🎒 นักเรียน'], ['worker', '💼 คนทำงาน']].map(([k, v]) => `<button class="btn ${role === k ? 'primary' : 'sec'}" style="flex:1" data-hrole="${k}" ${role === k || (roleLocked && role) ? 'disabled' : ''} aria-pressed="${role === k}">${v}</button>`).join('')}</div>
         <span class="small muted">${role ? (roleLocked ? 'เปลี่ยนได้อีกครั้ง ' + new Date(H.role_locked_until).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'เปลี่ยนได้ เปลี่ยนแล้วล็อก 30 วัน') : 'เลือกเพื่อเปิดกิจวัตรของนักเรียนหรือคนทำงาน · เปลี่ยนแล้วล็อก 30 วัน'}</span></div>` : ''}
@@ -187,14 +209,15 @@
     const el = $('qsub-plan');
     if (S.qsub !== 'plan') return;
     if (!S.day) { el.innerHTML = '<div class="empty" style="margin-top:14px">กำลังโหลดแผน…</div>'; return; }
-    el.innerHTML = `<div class="row scroll-x" style="margin:14px 0 12px">${[['day', 'วันนี้'], ['habit', 'กิจวัตร'], ['food', '🍜 ร้านอาหาร'], ['month', 'เดือนนี้'], ['personal', 'ส่วนตัว']].map(([k, v]) => `<button class="pill" data-psub="${k}" aria-pressed="${S.psub === k}">${v}</button>`).join('')}</div>
-      ${S.psub === 'day' ? dayView(S.day) : S.psub === 'habit' ? (S.habits ? habitsView(S.habits) : '<div class="stack" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div>') : S.psub === 'food' ? (S.foods ? App.foodView() : '<div class="empty">กำลังเปิดร้าน…</div>') : S.psub === 'month' ? (S.month ? monthView(S.month) : '<div class="stack" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div>') : personalView(S.day)}`;
+    el.innerHTML = `<div class="row scroll-x" style="margin:14px 0 12px">${[['day', 'วันนี้'], ['food', '🍜 ร้านอาหาร'], ['month', 'เดือนนี้'], ['personal', 'ส่วนตัว']].map(([k, v]) => `<button class="pill" data-psub="${k}" aria-pressed="${S.psub === k}">${v}</button>`).join('')}</div>
+      ${S.psub === 'day' || S.psub === 'habit' ? todayView(S.day) : S.psub === 'food' ? (S.foods ? App.foodView() : '<div class="empty">กำลังเปิดร้าน…</div>') : S.psub === 'month' ? (S.month ? monthView(S.month) : '<div class="stack" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div>') : personalView(S.day)}`;
   }
   renderers.push(renderPlan);
   App.renderPlan = renderPlan;
 
   $('qsub-plan').addEventListener('click', async (ev) => {
     const s = ev.target.closest('[data-psub]'); if (s) { S.psub = s.dataset.psub; renderPlan(); if (S.psub === 'food') refresh(['food']); return; }
+    if (ev.target.closest('[data-gohabits]')) { const h = $('habitList'); if (h) h.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     const g = ev.target.closest('[data-hgrp]'); if (g) { S.habitGrp = g.dataset.hgrp; return renderPlan(); }
     const rl = ev.target.closest('[data-hrole]');
     if (rl) {

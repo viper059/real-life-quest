@@ -243,7 +243,7 @@
     const h = (hash || location.hash || '').replace(/^#/, '');
     if (!h) {
       // brand-new players start where they can act right away (habits), not at a KYC-gated board
-      if (!S._landed && S.profile && !S.profile.exp && S.profile.kyc_status !== 'verified') { S._landed = 1; setTab('board'); setQsub('plan'); }
+      if (!S._landed && S.profile) { S._landed = 1; setTab('board'); setQsub('plan'); }
       return;
     }
     if (h.startsWith('quest-')) { setTab('board'); App.openQuestSheet && App.openQuestSheet(h.slice(6)); }
