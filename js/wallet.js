@@ -13,7 +13,7 @@
       sb.from('exchange_partners').select('*').order('sort'),
       sb.from('exchange_links').select('partner_id,partner_user,linked_at').eq('user_id', uid)
     ]);
-    S.tx = t.data || []; S.orders = o.data || []; S.partners = xp.data || []; S.xlinks = Object.fromEntries((xl.data || []).map((r) => [r.partner_id, r]));
+    S.tx = t.data || []; S.orders = o.data || []; S.partners = (xp.data || []).filter((x) => x.active || !x.can_grant_cards); S.xlinks = Object.fromEntries((xl.data || []).map((r) => [r.partner_id, r]));
   };
   loaders.shop = async function () {
     const [s, mine] = await Promise.all([

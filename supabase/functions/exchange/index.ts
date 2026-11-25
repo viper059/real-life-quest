@@ -3,6 +3,7 @@
 // Secrets: EXCHANGE_SECRET_<PARTNER ID IN CAPS>, e.g. EXCHANGE_SECRET_FEEDTH, EXCHANGE_SECRET_SONGDUAN.
 // Body: { "partner": "feedth", "ts": <unix seconds>, "action": "link", "code": "AB12CD34", "partner_user": "<their user id>" }
 //    or { "partner": "feedth", "ts": ..., "action": "exchange", "ref": "<unique id>", "partner_user": "...", "units": 300 }
+//    or { "partner": "game", "ts": ..., "action": "grant_card", "ref": "<unique id>", "partner_user": "...", "card": "<card id>" }
 // Deploy with verify_jwt = false (this function checks the signature itself).
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 
@@ -43,6 +44,13 @@ Deno.serve(async (req) => {
     });
     // 422 = refused: the partner must refund the credit it already took.
     return error ? json(422, { error: error.message, refund: true }) : json(200, data);
+  }
+  if (b.action === "grant_card") {
+    // game / special-mission reward: only cards marked special or boss, once per (partner, ref)
+    const { data, error } = await db.rpc("svc_grant_card", {
+      p_partner: partner, p_partner_user: String(b.partner_user ?? ""), p_card: String(b.card ?? ""), p_ref: String(b.ref ?? ""),
+    });
+    return error ? json(422, { error: error.message }) : json(200, data);
   }
   return json(400, { error: "unknown action" });
 });

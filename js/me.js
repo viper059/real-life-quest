@@ -235,9 +235,9 @@
     return `<article class="card" style="display:flex;flex-direction:column;gap:6px;${owned ? '' : 'opacity:.75;border-style:dashed'}">
       <h3 style="font-size:16px">${esc(c.name)}</h3>
       <span class="small" style="color:var(--teal-ink)">EXP +${c.exp_bonus_pct}% ${c.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + esc((CATS[c.category] || {}).label || c.category)}${Object.keys(c.stats || {}).length ? ' · ' + Object.entries(c.stats).map(([s, v]) => s.toUpperCase() + ' +' + v).join(' ') : ''}</span>
-      <span class="small muted">${owned ? 'มีแล้ว' : (c.unlock_count < 9999 ? 'ปลดล็อกจากงานจริง: ' + esc(c.description) + ` (${Math.min(done, c.unlock_count)}/${c.unlock_count})` : esc(c.description))}</span>
+      <span class="small muted">${owned ? 'มีแล้ว' : c.source === 'special' ? 'ได้จากภารกิจพิเศษ · ' + esc(c.description) : c.source === 'boss' ? 'ได้จากตู้บอสในเกม · ' + esc(c.description) : c.source === 'shop' ? 'การ์ดกิลด์ · ' + esc(c.description) : (c.unlock_count < 9999 ? 'ปลดล็อกจากงานจริง: ' + esc(c.description) + ` (${Math.min(done, c.unlock_count)}/${c.unlock_count})` : esc(c.description) + ' · ได้จากการสุ่ม')}</span>
       <span class="small" style="color:var(--ink-soft)">ระดับ: ${esc(c.rarity)}</span>
-      ${!owned && c.in_pack && price(c.rarity) ? `<button type="button" class="btn sec sm" data-cardbuy="${c.id}" ${gold >= price(c.rarity) ? '' : 'disabled'}>ซื้อ ${num(price(c.rarity))} G</button>` : ''}</article>`;
+      ${!owned && c.source === 'shop' && (c.shop_price || price(c.rarity)) ? `<button type="button" class="btn sec sm" data-cardbuy="${c.id}" ${gold >= (c.shop_price || price(c.rarity)) ? '' : 'disabled'}>ซื้อ ${num(c.shop_price || price(c.rarity))} G</button>` : ''}</article>`;
   }
   const DSLOTS = [['main', 'main_card', 'การ์ดหลัก'], ['s1', 'support1', 'เสริม 1'], ['s2', 'support2', 'เสริม 2'], ['s3', 'support3', 'เสริม 3']];
   const bonusText = (c) => `EXP +${c.exp_bonus_pct}% ${c.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + ((CATS[c.category] || {}).label || '')}`;
@@ -249,7 +249,7 @@
     const total = (P.odds || []).reduce((a, o) => a + o.weight, 0) || 1;
     el.innerHTML = `<div class="card wood stack">
       <div class="row between"><b style="font-family:var(--font-display);font-size:17px">🎴 ตู้สุ่มการ์ดอาชีพ</b><span class="small" style="color:var(--on-wood-muted)">วันนี้สุ่มแล้ว ${P.drawn_today} / ${P.daily_max}</span></div>
-      <span class="small" style="color:var(--on-wood-muted)">นอกจากการ์ดเริ่มต้น ไม่มีการแจกฟรี — สุ่มได้ด้วย Crystal เท่านั้น (Crystal ต้องเติมเงินซื้อ ตอนนี้ยังไม่เปิดเติม) ซื้อตรงด้วย Gold จากคลังด้านล่าง หรือปลดล็อกจากการทำงานจริง การ์ดซ้ำคืน ${num(P.refund)} C</span>
+      <span class="small" style="color:var(--on-wood-muted)">นอกจากการ์ดเริ่มต้น ไม่มีการแจกฟรี — สุ่มได้ด้วย Crystal เท่านั้น (Crystal ต้องเติมเงินซื้อ ตอนนี้ยังไม่เปิดเติม) · ปลดล็อกจากงานจริง · การ์ดกิลด์ซื้อตรงด้วย Gold · การ์ดสมาคมได้จากภารกิจพิเศษหรือตู้บอสในเกม การ์ดซ้ำคืน ${num(P.refund)} C</span>
       <div class="row" style="gap:6px;flex-wrap:wrap">${(P.odds || []).map((o) => `<span class="fchip gold-chip">${esc(o.rarity)} ${Math.round(o.weight / total * 1000) / 10}%</span>`).join('')}</div>
       <span class="small" style="color:var(--on-wood-muted)">การันตีระดับอีปิกขึ้นไป ภายใน ${P.pity} ครั้ง (สุ่มมาแล้ว ${Math.min(P.since_epic, P.pity)} ครั้งนับจากอีปิกล่าสุด) · การ์ด Gold และ Crystal แลกเป็นเงินสดไม่ได้</span>
       <button type="button" class="btn primary" data-draw="1" ${can ? '' : 'disabled'}>${left <= 0 ? 'วันนี้สุ่มครบแล้ว' : `สุ่มการ์ด ${num(P.price)} C`}</button>
@@ -358,7 +358,7 @@
   $('cardList').addEventListener('click', async (ev) => {
     const b = ev.target.closest('[data-cardbuy]'); if (!b) return;
     const c = S.cards.find((x) => x.id === b.dataset.cardbuy); if (!c) return;
-    if (!confirm(`ซื้อ “${c.name}” ราคา ${price(c.rarity)} G ใช่ไหม?`)) return;
+    if (!confirm(`ซื้อ “${c.name}” ราคา ${num(c.shop_price || price(c.rarity))} G ใช่ไหม?`)) return;
     b.disabled = true; await rpc('buy_card', { p_card: c.id }, `ซื้อ ${c.name} แล้ว`);
   });
   $('deckPanel').addEventListener('click', async (ev) => {
