@@ -51,7 +51,7 @@
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = (n) => Number(n || 0).toLocaleString('en-US');
-  const errText = (e) => { const m = (e && (e.message || e.error_description)) || String(e); const hit = ERR.find(([k]) => m.includes(k)); return hit ? hit[1] : m; };
+  const errText = (e) => { const m = (e && (e.message || e.error_description)) || String(e); if (/Failed to fetch|NetworkError|Load failed|network/i.test(m)) return 'เชื่อมต่อไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่'; const hit = ERR.find(([k]) => m.includes(k)); return hit ? hit[1] : m; };
   const ago = (iso) => { if (!iso) return ''; const s = (Date.now() - new Date(iso)) / 1000; if (s < 0) return when(iso); if (s < 60) return 'เมื่อสักครู่'; if (s < 3600) return Math.floor(s / 60) + ' นาที'; if (s < 86400) return Math.floor(s / 3600) + ' ชม.'; return new Date(iso).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }); };
   const when = (iso) => iso ? new Date(iso).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
   const hours = (min) => { min = Number(min || 0); const h = Math.floor(min / 60), m = min % 60; return h ? (m ? `${h} ชม. ${m} นาที` : `${h} ชม.`) : `${m} นาที`; };
@@ -64,7 +64,7 @@
   }
   let toastTimer;
   function toast(msg, isErr) {
-    const t = $('toast'); t.textContent = msg; t.classList.toggle('err', !!isErr); t.classList.remove('hidden');
+    const t = $('toast'); t.textContent = msg; t.classList.toggle('err', !!isErr); t.setAttribute('role', isErr ? 'alert' : 'status'); t.classList.remove('hidden');
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add('hidden'), 3600);
   }
 
@@ -215,7 +215,7 @@
 
   function renderKycBanner() {
     const b = $('kycBanner'), k = S.profile.kyc_status;
-    if (k === 'verified' || S.tab !== 'board') { b.classList.add('hidden'); return; }
+    if (k === 'verified' || S.tab !== 'board' || (S.qsub !== 'board' && S.qsub !== 'mine')) { b.classList.add('hidden'); return; }
     b.classList.remove('hidden');
     b.innerHTML = k === 'pending'
       ? `<div style="flex:1;min-width:200px"><b>กำลังตรวจเอกสารยืนยันตัวตน</b><div class="small muted">ทีมงานจะแจ้งผลผ่านการแจ้งเตือน ระหว่างนี้ดูกระดานได้ แต่ยังรับงานไม่ได้</div></div>`
@@ -235,12 +235,17 @@
     S.qsub = sub;
     document.querySelectorAll('[data-qsub]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.qsub === sub));
     ['board', 'mine', 'plan', 'monster'].forEach((s) => $('qsub-' + s).classList.toggle('hidden', s !== sub));
+    renderKycBanner();
     if (sub === 'plan' && App.loadPlanner) App.loadPlanner();
     if (sub === 'monster' && App.loadMonsters) App.loadMonsters();
   }
   function route(hash) {
     const h = (hash || location.hash || '').replace(/^#/, '');
-    if (!h) return;
+    if (!h) {
+      // brand-new players start where they can act right away (habits), not at a KYC-gated board
+      if (!S._landed && S.profile && !S.profile.exp && S.profile.kyc_status !== 'verified') { S._landed = 1; setTab('board'); setQsub('plan'); }
+      return;
+    }
     if (h.startsWith('quest-')) { setTab('board'); App.openQuestSheet && App.openQuestSheet(h.slice(6)); }
     else if (h === 'plan') { setTab('board'); setQsub('plan'); }
     else if (h === 'monster') { setTab('board'); setQsub('monster'); }
@@ -407,7 +412,7 @@
     } catch (e) { $('authMsg').textContent = errText(e); }
     finally { $('authSubmit').disabled = false; }
   };
-  $('signOut').onclick = () => sb.auth.signOut();
+  $('signOut').onclick = () => { if (confirm('ออกจากระบบใช่ไหม?')) sb.auth.signOut(); };
 
   $('forgotLink').onclick = async () => {
     const email = $('authEmail').value.trim();

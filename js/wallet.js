@@ -37,7 +37,12 @@
     const w = S.wallet, gr = rate('gold'), cr = rate('crystal'), p = S.profile;
     const openOrders = S.orders.filter((o) => ['pending', 'notified'].includes(o.status));
     $('view-wallet').innerHTML = `
-      <div class="section"><div class="grid" style="align-items:stretch">
+      <div class="section"><div class="card rules-card stack" style="margin-bottom:12px">
+        <b>Gold ใช้ยังไง</b>
+        <span class="small">① หาได้จากการทำกิจวัตรทุกวัน ไม่ต้องเติมเงิน</span>
+        <span class="small">② ใช้ซื้ออาหาร ของในร้าน และลงประกาศงาน</span>
+        <span class="small">③ Gold และ Crystal ถอนเป็นเงินสดไม่ได้ · ค่าจ้างเควสต์เป็นเงินบาท แยกจาก Gold</span>
+      </div><div class="grid" style="align-items:stretch">
         <div class="balance">
           <span class="small" style="color:var(--on-wood-muted)">Gold · เงินในแอป ใช้ซื้อทุกอย่าง ถอนไม่ได้</span>
           <span class="big">${num(w.gold)} G</span>

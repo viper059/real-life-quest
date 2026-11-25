@@ -18,7 +18,7 @@
   // What the board should tell me before I open the quest.
   function fitOf(q) {
     if (q.poster_id === S.user.id) return { ok: false, text: 'เควสต์ของคุณ' };
-    if (S.profile.kyc_status !== 'verified') return { ok: false, text: 'ต้องยืนยันตัวตน' };
+    if (S.profile.kyc_status !== 'verified') return { ok: false, text: 'ยืนยันตัวตนก่อนรับงาน' };
     const occ = S.occupations.find((o) => o.id === q.category);
     if (occ && (occ.license_required || q.rank !== 'F')) {
       const r = myRankIn(q.category);

@@ -110,17 +110,15 @@
         <div class="row between small" style="color:var(--on-wood-muted)"><span>EXP จากกิจวัตรวันนี้</span><span>${capped ? `${H.exp_today} / ${H.cap}` : `+${H.exp_today}`}</span></div>
         ${capped ? `<div class="bar dark"><div style="width:${pct}%;background:${full ? 'var(--crystal)' : 'var(--exp)'}"></div></div>` : ''}
         ${App.buffBar(H)}
-        <span class="small" style="color:var(--on-wood-muted)">ทำกิจวัตรได้ Gold ด้วย — เอาไปซื้อของกินที่แท็บ “🍜 ร้านอาหาร” เพื่อเพิ่มพลัง</span>
-        <span class="small" style="color:var(--on-wood-muted)">${full ? 'ครบเพดานวันนี้แล้ว — ทำต่อได้เพื่อสุขภาพ แต่ไม่ได้ EXP เพิ่ม' : 'แต่ละอย่างได้ EXP ไม่เท่ากัน มีจำนวนครั้งต่อวัน ระยะห่าง และช่วงเวลา กันกดรัว'}</span>
+        ${full ? '<span class="small" style="color:var(--on-wood-muted)">ครบเพดานวันนี้แล้ว — ทำต่อได้เพื่อสุขภาพ แต่ไม่ได้ EXP เพิ่ม</span>' : ''}
+        <details class="more"><summary>ℹ️ กติกากิจวัตร</summary>
+          <div class="stack" style="gap:4px"><span class="small" style="color:var(--on-wood-muted)">ทำกิจวัตรได้ Gold ด้วย — เอาไปซื้อของกินที่แท็บ “🍜 ร้านอาหาร” เพื่อเพิ่มพลัง</span>
+          <span class="small" style="color:var(--on-wood-muted)">แต่ละอย่างได้ EXP ไม่เท่ากัน มีจำนวนครั้งต่อวัน ระยะห่าง และช่วงเวลา กันกดรัว · “เพดาน” คือ EXP สูงสุดที่รับจากกิจวัตรได้ในหนึ่งวัน</span></div></details>
       </div>
-      <div class="card stack"><b>ฉันเป็น</b>
+      ${!role ? `      <div class="card stack"><b>ฉันเป็น</b>
         <div class="row">${[['student', '🎒 นักเรียน'], ['worker', '💼 คนทำงาน']].map(([k, v]) => `<button class="btn ${role === k ? 'primary' : 'sec'}" style="flex:1" data-hrole="${k}" ${role === k || (roleLocked && role) ? 'disabled' : ''} aria-pressed="${role === k}">${v}</button>`).join('')}</div>
-        <span class="small muted">${role ? (roleLocked ? 'เปลี่ยนได้อีกครั้ง ' + new Date(H.role_locked_until).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'เปลี่ยนได้ เปลี่ยนแล้วล็อก 30 วัน') : 'เลือกเพื่อเปิดกิจวัตรของนักเรียนหรือคนทำงาน · เปลี่ยนแล้วล็อก 30 วัน'}</span></div>
+        <span class="small muted">${role ? (roleLocked ? 'เปลี่ยนได้อีกครั้ง ' + new Date(H.role_locked_until).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'เปลี่ยนได้ เปลี่ยนแล้วล็อก 30 วัน') : 'เลือกเพื่อเปิดกิจวัตรของนักเรียนหรือคนทำงาน · เปลี่ยนแล้วล็อก 30 วัน'}</span></div>` : ''}
       <div class="row scroll-x">${[['all', 'ทั้งหมด'], ...visible].map(([k, v]) => `<button class="pill" data-hgrp="${k}" aria-pressed="${f === k}">${v}</button>`).join('')}</div>
-      ${needPlace.length && (f === 'all' || f === role) ? `<div class="card stack"><b>ตำแหน่งสำหรับเช็กอิน</b>
-        <span class="small muted">ตั้งตอนอยู่ที่นั่นจริง · ตั้งแล้วเปลี่ยนได้อีกครั้งหลัง 30 วัน · เห็นเฉพาะคุณ</span>
-        <div class="row">${needPlace.map((k) => { const p = H.places[k]; const locked = p && new Date(p.locked_until) > Date.now();
-          return `<button class="btn ${p ? 'sec' : 'action'} sm" data-hplace="${k}" ${locked ? 'disabled' : ''}>${p ? '✓ ' : ''}${PLACE[k]}${locked ? ' · ล็อกถึง ' + new Date(p.locked_until).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : p ? ' · ตั้งใหม่' : ' · ตั้งที่นี่'}</button>`; }).join('')}</div></div>` : ''}
       ${groups.map(([g, label]) => { const list = H.habits.filter((h) => h.grp === g); if (!list.length) return '';
         return `<div class="card stack" style="gap:2px"><h2 style="font-size:16px">${label}</h2>${list.map((h) => {
           const can = !h.block, proof = h.verify === 'photo' || (h.verify === 'parent' && !H.has_parent), isGps = h.verify === 'gps';
@@ -133,6 +131,13 @@
               : proof && can ? `<label class="btn action sm" style="cursor:pointer">📷 ทำแล้ว<input type="file" accept="image/*" capture="environment" data-hphoto="${h.id}" hidden></label>`
               : `<button class="btn ${can ? 'action' : 'sec'} sm" data-p="habit" data-id="${h.id}" data-loc="${h.verify === 'location' ? 1 : 0}" ${can ? '' : 'disabled'}>${h.count >= h.max ? '✓' : 'ทำแล้ว'}</button>`}
           </div>`; }).join('')}</div>`; }).join('')}
+      ${needPlace.length && (f === 'all' || f === role) ? `<div class="card stack"><b>ตำแหน่งสำหรับเช็กอิน</b>
+        <span class="small muted">ตั้งตอนอยู่ที่นั่นจริง · ตั้งแล้วเปลี่ยนได้อีกครั้งหลัง 30 วัน · เห็นเฉพาะคุณ</span>
+        <div class="row">${needPlace.map((k) => { const p = H.places[k]; const locked = p && new Date(p.locked_until) > Date.now();
+          return `<button class="btn ${p ? 'sec' : 'action'} sm" data-hplace="${k}" ${locked ? 'disabled' : ''}>${p ? '✓ ' : ''}${PLACE[k]}${locked ? ' · ล็อกถึง ' + new Date(p.locked_until).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : p ? ' · ตั้งใหม่' : ' · ตั้งที่นี่'}</button>`; }).join('')}</div></div>` : ''}
+      ${role ? `<div class="card stack"><b>ฉันเป็น</b>
+        <div class="row">${[['student', '🎒 นักเรียน'], ['worker', '💼 คนทำงาน']].map(([k, v]) => `<button class="btn ${role === k ? 'primary' : 'sec'}" style="flex:1" data-hrole="${k}" ${role === k || (roleLocked && role) ? 'disabled' : ''} aria-pressed="${role === k}">${v}</button>`).join('')}</div>
+        <span class="small muted">${role ? (roleLocked ? 'เปลี่ยนได้อีกครั้ง ' + new Date(H.role_locked_until).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'เปลี่ยนได้ เปลี่ยนแล้วล็อก 30 วัน') : 'เลือกเพื่อเปิดกิจวัตรของนักเรียนหรือคนทำงาน · เปลี่ยนแล้วล็อก 30 วัน'}</span></div>` : ''}
     </div>`;
   }
   const habitMsg = (x) => (x.status !== 'pending' && x.exp && App.pop && App.pop('+' + x.exp + ' EXP' + (x.gold ? '  +' + x.gold + ' G' : '')), x.status === 'pending' ? 'บันทึกแล้ว รอผู้ปกครองรับรอง' : x.exp ? `+${x.exp} EXP${x.gold ? ' · +' + x.gold + ' G' : ''}${x.capped ? ' (ถึงเพดานวันนี้)' : ''}` : 'บันทึกแล้ว (ครบเพดาน EXP วันนี้)');
@@ -182,8 +187,8 @@
     const el = $('qsub-plan');
     if (S.qsub !== 'plan') return;
     if (!S.day) { el.innerHTML = '<div class="empty" style="margin-top:14px">กำลังโหลดแผน…</div>'; return; }
-    el.innerHTML = `<div class="row" style="margin:14px 0 12px">${[['day', 'วันนี้'], ['habit', 'กิจวัตร'], ['food', '🍜 ร้านอาหาร'], ['month', 'เดือนนี้'], ['personal', 'ส่วนตัว']].map(([k, v]) => `<button class="pill" data-psub="${k}" aria-pressed="${S.psub === k}">${v}</button>`).join('')}</div>
-      ${S.psub === 'day' ? dayView(S.day) : S.psub === 'habit' ? (S.habits ? habitsView(S.habits) : '') : S.psub === 'food' ? (S.foods ? App.foodView() : '<div class="empty">กำลังเปิดร้าน…</div>') : S.psub === 'month' ? (S.month ? monthView(S.month) : '') : personalView(S.day)}`;
+    el.innerHTML = `<div class="row scroll-x" style="margin:14px 0 12px">${[['day', 'วันนี้'], ['habit', 'กิจวัตร'], ['food', '🍜 ร้านอาหาร'], ['month', 'เดือนนี้'], ['personal', 'ส่วนตัว']].map(([k, v]) => `<button class="pill" data-psub="${k}" aria-pressed="${S.psub === k}">${v}</button>`).join('')}</div>
+      ${S.psub === 'day' ? dayView(S.day) : S.psub === 'habit' ? (S.habits ? habitsView(S.habits) : '<div class="stack" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div>') : S.psub === 'food' ? (S.foods ? App.foodView() : '<div class="empty">กำลังเปิดร้าน…</div>') : S.psub === 'month' ? (S.month ? monthView(S.month) : '<div class="stack" aria-busy="true"><div class="skeleton"></div><div class="skeleton"></div></div>') : personalView(S.day)}`;
   }
   renderers.push(renderPlan);
   App.renderPlan = renderPlan;

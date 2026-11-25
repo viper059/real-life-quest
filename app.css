@@ -64,16 +64,18 @@ main{max-width:1200px;margin:0 auto;padding:14px 16px 110px}
 .muted{color:var(--ink-muted)}.small{font-size:13px}
 .btn{font-weight:600;min-height:44px;padding:0 16px;border-radius:var(--r-md);border:0;cursor:pointer;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none}
 .btn.sm{min-height:40px;padding:0 12px;font-size:13px}
-.btn:disabled{opacity:.55;cursor:not-allowed}
+.btn:disabled{opacity:1;cursor:not-allowed;background:transparent;color:var(--ink-soft);border:1.5px dashed var(--wood-line)}
+.card.wood .btn:disabled,.balance .btn:disabled{background:transparent!important;color:var(--on-wood-muted);border-color:var(--on-wood-muted)}
+.btn[aria-pressed="true"]:disabled{background:var(--gold-500);color:var(--ink);border:0}
 .btn.primary{background:var(--gold-500);color:var(--ink)}
 .btn.action{background:var(--teal-600);color:#fff}
 .btn.urgent,.btn.danger{background:var(--danger);color:#fff}
-.btn.sec{background:var(--parchment-100);color:var(--ink-soft);border:1.5px solid var(--brass-600)}
+.btn.sec{background:var(--parchment-100);color:var(--ink-soft);border:1.5px solid var(--wood-line)}
 .btn:focus-visible,.pill:focus-visible,nav.tabs button:focus-visible,.seg button:focus-visible{outline:3px solid var(--teal-600);outline-offset:2px}
-.pill{border:1.5px solid var(--brass-600);background:var(--parchment-100);color:var(--ink-soft);border-radius:999px;min-height:42px;padding:0 16px;cursor:pointer;font-size:14px}
+.pill{border:1.5px solid var(--wood-line);background:var(--parchment-100);color:var(--ink-soft);border-radius:999px;min-height:44px;flex:none;padding:0 16px;cursor:pointer;font-size:14px}
 .pill[aria-pressed="true"]{background:var(--wood-800);border-color:var(--wood-800);color:var(--on-wood);font-weight:600}
 .seg{display:flex;background:var(--wood-900);border:1px solid var(--wood-line);border-radius:999px;padding:3px}
-.seg button{flex:1;border:0;background:transparent;color:var(--on-wood-muted);border-radius:999px;min-height:44px;padding:0 12px;cursor:pointer;font-size:14px}
+.seg button{flex:1;border:0;background:transparent;color:var(--on-wood-muted);border-radius:999px;min-height:44px;padding:0 6px;cursor:pointer;font-size:13px;white-space:nowrap}
 .seg button[aria-pressed="true"]{background:var(--gold-500);color:var(--ink);font-weight:600}
 .small-seg button{min-height:40px;font-size:13px}
 .tag{font-size:12px;font-weight:600;border-radius:var(--r-sm);padding:2px 8px;white-space:nowrap}
@@ -84,7 +86,7 @@ main{max-width:1200px;margin:0 auto;padding:14px 16px 110px}
 .bar{height:8px;border-radius:4px;background:var(--parchment-track);overflow:hidden}.bar>div{height:8px;border-radius:4px}
 .bar.dark{background:var(--wood-700)}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--ink-soft)}
-label.f input,label.f select,label.f textarea{border:1.5px solid var(--brass-600);border-radius:var(--r-md);padding:10px 12px;background:#fffdf6;color:var(--ink);min-height:44px;width:100%;font-size:16px}
+label.f input,label.f select,label.f textarea{border:1.5px solid var(--wood-line);border-radius:var(--r-md);padding:10px 12px;background:#fffdf6;color:var(--ink);min-height:44px;width:100%;font-size:16px}
 label.f input:focus,label.f select:focus,label.f textarea:focus{outline:2px solid var(--teal-600);outline-offset:1px}
 .dash{border-top:1px dashed var(--brass-500);padding-top:8px}
 .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}
@@ -221,3 +223,14 @@ label.row.small{flex-wrap:nowrap;align-items:flex-start}label.row.small input{fl
 
 .boot-msg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--wood-900);color:var(--on-wood);font-family:var(--font-display);font-size:18px;z-index:10}
 #authView:not(.hidden)~.boot-msg,#resetView:not(.hidden)~.boot-msg,#appView:not(.hidden)~.boot-msg{display:none}
+
+/* review fixes: chips wrap inside cards, softer press feedback, skeleton, motion */
+.fchip,.buff-chip,.gold-chip,.muted-chip{white-space:normal;max-width:100%;text-align:center}
+.btn,.pill,.seg button{transition:background .15s,transform .1s}
+.btn:active:not(:disabled),.pill:active{transform:translateY(1px)}
+.rules-card{border-left:4px solid var(--gold-500)}
+.skeleton{height:84px;border-radius:var(--r-md);background:linear-gradient(90deg,var(--parchment-200),var(--parchment-100),var(--parchment-200));background-size:200% 100%;animation:skel 1.2s linear infinite}
+@keyframes skel{to{background-position:-200% 0}}
+details.more>summary{cursor:pointer;min-height:36px;display:flex;align-items:center;font-size:13px;color:var(--on-wood-muted);list-style:none}
+details.more>summary::-webkit-details-marker{display:none}
+@media (prefers-reduced-motion:reduce){.b-hint,.b-num,.sp-status,.skeleton,.btn,.pill,.seg button{animation:none!important;transition:none!important}}
