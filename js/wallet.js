@@ -70,7 +70,7 @@
         ${o.status === 'pending' ? `<button class="btn action sm" data-order="${o.id}">ชำระ/แนบสลิป</button><button class="btn sec sm" data-ocancel="${o.id}">ยกเลิก</button>` : ''}</div>`).join('')}</div></div>` : ''}
       <div class="section"><div class="row between"><h2 style="font-size:17px">ร้านค้า Crystal</h2><span class="small muted">ของใช้ ของแต่งตัว ฉายา กรอบ และช่องเควสต์ส่วนตัว</span></div>
         <div class="row small" style="gap:6px">ระดับไอเทม: ${S.tiers.map((t) => t.obtainable ? tierTag(t.id) : `<span class="tag" style="background:var(--parchment-200);color:var(--ink-muted);border:1px dashed var(--brass-600)" title="ยังไม่เปิด">🔒 ${esc(t.label)}</span>`).join('')}</div>
-        <span class="small muted">ตอนนี้หาได้สูงสุดระดับอีปิก · ระดับรีเจนขึ้นไปยังไม่เปิด</span>
+        <span class="small muted">ตอนนี้หาได้สูงสุดระดับอีปิก · ระดับเลเจนด์ขึ้นไปยังไม่เปิด</span>
         <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${S.shop.filter((i) => i.active || S.myItems[i.id]).sort((a, b) => tier(a.tier).ord - tier(b.tier).ord || a.sort - b.sort).map((i) => {
           const own = S.myItems[i.id];
           const t = tier(i.tier);

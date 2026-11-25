@@ -1,5 +1,5 @@
 -- Real-life Quest — rarity tiers for items and gear (not job cards):
---   ธรรมดา · ไม่ธรรมดา · อีปิก · รีเจน · มิสติก · ซูเปอร์มิสติก · ดีวาย · สวรรค์
+--   ธรรมดา · ไม่ธรรมดา · อีปิก · เลเจนด์ · มิสติก · ซูเปอร์มิสติก · ดีวาย · สวรรค์
 -- For now ordinary players can get up to Epic. Legend and above are defined but closed:
 -- no item in those tiers can be on sale or handed out until the tier is opened (decided later).
 
