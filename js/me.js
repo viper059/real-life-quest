@@ -23,12 +23,14 @@
   };
   loaders.cards = async function () {
     const uid = S.user.id;
-    const [c, mine, d, done] = await Promise.all([
+    const [c, mine, d, done, pk] = await Promise.all([
       sb.from('job_cards').select('*').order('sort'),
       sb.from('user_cards').select('card_id').eq('user_id', uid),
       sb.from('decks').select('*').eq('user_id', uid).maybeSingle(),
-      sb.from('quests').select('category').eq('worker_id', uid).eq('status', 'completed')
+      sb.from('quests').select('category').eq('worker_id', uid).eq('status', 'completed'),
+      sb.rpc('card_pack_info')
     ]);
+    S.pack = pk.data || null;
     S.cards = c.data || []; S.myCards = new Set((mine.data || []).map((r) => r.card_id)); S.deck = d.data;
     S.doneByCat = {}; (done.data || []).forEach((q) => { S.doneByCat[q.category] = (S.doneByCat[q.category] || 0) + 1; });
   };
@@ -226,16 +228,33 @@
   $('view-char').addEventListener('change', (ev) => { if (ev.target.closest('[data-color-input]')) renderChar(); });
 
   /* ---------- deck tab ---------- */
+  const price = (r) => { const o = ((S.pack || {}).odds || []).find((x) => x.rarity === r); return o ? o.shop_price : 0; };
   function cardTile(c) {
+    const gold = Number(S.wallet ? S.wallet.gold : 0);
     const owned = S.myCards.has(c.id), done = S.doneByCat[c.category] || 0;
     return `<article class="card" style="display:flex;flex-direction:column;gap:6px;${owned ? '' : 'opacity:.75;border-style:dashed'}">
       <h3 style="font-size:16px">${esc(c.name)}</h3>
       <span class="small" style="color:var(--teal-ink)">EXP +${c.exp_bonus_pct}% ${c.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + esc((CATS[c.category] || {}).label || c.category)}${Object.keys(c.stats || {}).length ? ' · ' + Object.entries(c.stats).map(([s, v]) => s.toUpperCase() + ' +' + v).join(' ') : ''}</span>
-      <span class="small muted">${owned ? 'มีแล้ว' : 'ปลดล็อก: ' + esc(c.description) + ` (${Math.min(done, c.unlock_count)}/${c.unlock_count})`}</span></article>`;
+      <span class="small muted">${owned ? 'มีแล้ว' : (c.unlock_count < 9999 ? 'ปลดล็อกจากงานจริง: ' + esc(c.description) + ` (${Math.min(done, c.unlock_count)}/${c.unlock_count})` : esc(c.description))}</span>
+      <span class="small" style="color:var(--ink-soft)">ระดับ: ${esc(c.rarity)}</span>
+      ${!owned && c.in_pack && price(c.rarity) ? `<button type="button" class="btn sec sm" data-cardbuy="${c.id}" ${gold >= price(c.rarity) ? '' : 'disabled'}>ซื้อ ${num(price(c.rarity))} G</button>` : ''}</article>`;
   }
   const DSLOTS = [['main', 'main_card', 'การ์ดหลัก'], ['s1', 'support1', 'เสริม 1'], ['s2', 'support2', 'เสริม 2'], ['s3', 'support3', 'เสริม 3']];
   const bonusText = (c) => `EXP +${c.exp_bonus_pct}% ${c.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + ((CATS[c.category] || {}).label || '')}`;
   const statsText = (c) => { const e = Object.entries(c.stats || {}); return e.length ? e.map(([k, v]) => k.toUpperCase() + ' +' + v).join(' · ') : 'ไม่มีค่าสถานะเพิ่ม'; };
+  function renderPack() {
+    const el = $('packPanel'), P = S.pack; if (!el) return;
+    if (!P) { el.innerHTML = ''; return; }
+    const gold = Number(S.wallet ? S.wallet.gold : 0), left = P.daily_max - P.drawn_today, can = gold >= P.price && left > 0;
+    const total = (P.odds || []).reduce((a, o) => a + o.weight, 0) || 1;
+    el.innerHTML = `<div class="card wood stack">
+      <div class="row between"><b style="font-family:var(--font-display);font-size:17px">🎴 ตู้สุ่มการ์ดอาชีพ</b><span class="small" style="color:var(--on-wood-muted)">วันนี้สุ่มแล้ว ${P.drawn_today} / ${P.daily_max}</span></div>
+      <span class="small" style="color:var(--on-wood-muted)">นอกจากการ์ดเริ่มต้น ไม่มีการแจกฟรี — ได้จากการสุ่มด้วย Gold, ซื้อตรงจากคลังด้านล่าง หรือปลดล็อกจากการทำงานจริงครบตามเงื่อนไข การ์ดซ้ำคืน ${num(P.refund)} G</span>
+      <div class="row" style="gap:6px;flex-wrap:wrap">${(P.odds || []).map((o) => `<span class="fchip gold-chip">${esc(o.rarity)} ${Math.round(o.weight / total * 1000) / 10}%</span>`).join('')}</div>
+      <span class="small" style="color:var(--on-wood-muted)">การันตีระดับอีปิกขึ้นไป ภายใน ${P.pity} ครั้ง (สุ่มมาแล้ว ${Math.min(P.since_epic, P.pity)} ครั้งนับจากอีปิกล่าสุด) · การ์ดและ Gold แลกเป็นเงินสดไม่ได้</span>
+      <button type="button" class="btn primary" data-draw="1" ${can ? '' : 'disabled'}>${left <= 0 ? 'วันนี้สุ่มครบแล้ว' : `สุ่มการ์ด ${num(P.price)} G`}</button>
+    </div>`;
+  }
   function renderDeck() {
     const d = S.deck || {}, owned = S.cards.filter((c) => S.myCards.has(c.id));
     const saved = DSLOTS.map(([k, col]) => d[col] || '').join('|');
@@ -259,6 +278,7 @@
       </div>
       <button type="button" class="btn primary" data-dsave="1" ${dirty && dr.main ? '' : 'disabled'}>${dirty ? 'บันทึกเด็ค' : 'บันทึกแล้ว'}</button>
     </div>`;
+    renderPack();
     $('cardList').innerHTML = S.cards.map(cardTile).join('');
   }
   renderers.push(renderChar, renderDeck);
@@ -327,6 +347,19 @@
       }
     } catch (e) { toast(App.errText(e), true); }
     if (btn && btn.isConnected) btn.disabled = false;
+  });
+  $('packPanel').addEventListener('click', async (ev) => {
+    const b = ev.target.closest('[data-draw]'); if (!b) return;
+    b.disabled = true;
+    const r = await rpc('draw_card');
+    if (r && r.card) openSheet('ได้การ์ดแล้ว!', `<div class="stack" style="text-align:center"><div class="card wood stack"><span class="small" style="color:var(--gold-500)">${esc(r.rarity)}</span><b style="font-family:var(--font-display);font-size:24px">${esc(r.name)}</b><span class="small" style="color:#d9ede4">EXP +${r.exp_bonus_pct}% ${r.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + esc((CATS[r.category] || {}).label || '')}</span></div>${r.dupe ? `<p class="small">ซ้ำกับที่มีอยู่ — คืน ${num(r.refund)} G</p>` : '<p class="small">เพิ่มเข้าคลังแล้ว ไปใส่ในช่องการ์ดได้เลย</p>'}<button type="button" class="btn primary" id="packOk">ตกลง</button></div>`);
+    const ok = document.getElementById('packOk'); if (ok) ok.onclick = () => App.closeSheet();
+  });
+  $('cardList').addEventListener('click', async (ev) => {
+    const b = ev.target.closest('[data-cardbuy]'); if (!b) return;
+    const c = S.cards.find((x) => x.id === b.dataset.cardbuy); if (!c) return;
+    if (!confirm(`ซื้อ “${c.name}” ราคา ${price(c.rarity)} G ใช่ไหม?`)) return;
+    b.disabled = true; await rpc('buy_card', { p_card: c.id }, `ซื้อ ${c.name} แล้ว`);
   });
   $('deckPanel').addEventListener('click', async (ev) => {
     const t = ev.target.closest('button'); if (!t) return;

@@ -19,10 +19,10 @@
     quest_escrow: 'ล็อกรางวัลเควสต์', quest_paid: 'จ่ายรางวัลเควสต์', quest_reward: 'รางวัลเควสต์', quest_refund: 'คืน Gold เควสต์',
     post_fee: 'ค่าลงประกาศงาน', exchange_in: 'แลกเครดิตจากแอปอื่น', withdraw_hold: 'ล็อก Gold (ระบบเดิม)', withdraw_paid: 'รายการเดิม (ระบบเดิม)', withdraw_refund: 'คืน Gold (ระบบเดิม)',
     guild_contribute: 'สมทบกองทุนกิลด์', guild_refund: 'คืนเงินกองทุน (ปิดกิลด์)', guild_claim_paid: 'ได้รับเงินเคลมกองทุน',
-    topup_gold: 'เติม Gold', topup_crystal: 'เติม Crystal', crystal_sent: 'ส่ง Crystal', crystal_received: 'ได้รับ Crystal', shop_buy: 'ซื้อของในร้าน', habit_gold: 'Gold จากกิจวัตร', food_buy: 'ซื้ออาหาร'
+    topup_gold: 'เติม Gold', topup_crystal: 'เติม Crystal', crystal_sent: 'ส่ง Crystal', crystal_received: 'ได้รับ Crystal', shop_buy: 'ซื้อของในร้าน', habit_gold: 'Gold จากกิจวัตร', food_buy: 'ซื้ออาหาร', card_pack: 'สุ่มการ์ด', card_buy: 'ซื้อการ์ด', card_dupe: 'คืนจากการ์ดซ้ำ'
   };
   const ERR = [
-    ['not enough gold', 'Gold ไม่พอ'], ['pantry full', 'ตู้เก็บของกินเต็ม (สูงสุด 10 จานต่อเมนู) กินก่อนค่อยซื้อเพิ่ม'], ['none left', 'ไม่มีของกินนี้เหลือแล้ว'], ['too full', 'ยังอิ่มอยู่ รอให้หิวก่อนค่อยกิน'], ['eat limit', 'วันนี้กินครบจำนวนมื้อแล้ว พรุ่งนี้ค่อยกินใหม่'], ['not enough crystal', 'Crystal ไม่พอ'], ['quest not available', 'เควสต์นี้ไม่ว่างแล้ว'],
+    ['not enough gold', 'Gold ไม่พอ'], ['pantry full', 'ตู้เก็บของกินเต็ม (สูงสุด 10 จานต่อเมนู) กินก่อนค่อยซื้อเพิ่ม'], ['none left', 'ไม่มีของกินนี้เหลือแล้ว'], ['too full', 'ยังอิ่มอยู่ รอให้หิวก่อนค่อยกิน'], ['draw limit', 'วันนี้สุ่มครบจำนวนแล้ว พรุ่งนี้ค่อยสุ่มใหม่'], ['already owned', 'มีการ์ดใบนี้แล้ว'], ['card not for sale', 'การ์ดใบนี้ไม่ได้วางขาย'], ['eat limit', 'วันนี้กินครบจำนวนมื้อแล้ว พรุ่งนี้ค่อยกินใหม่'], ['not enough crystal', 'Crystal ไม่พอ'], ['quest not available', 'เควสต์นี้ไม่ว่างแล้ว'],
     ['identity not verified', 'ต้องยืนยันตัวตนก่อน'], ['career rank too low', 'ขั้นอาชีพยังไม่ถึงที่งานนี้กำหนด'], ['account banned', 'บัญชีถูกระงับ'],
     ['family only', 'เฉพาะลูกในบ้านนี้'], ['own quest', 'เป็นเควสต์ของคุณเอง'], ['location required', 'ต้องปักหมุดตำแหน่งงาน'],
     ['too far from the job site', 'อยู่ไกลจากหน้างานเกินไป'], ['already checked in', 'เช็กอินอยู่แล้ว'], ['check out first', 'ต้องเช็กเอาต์ก่อน'],
