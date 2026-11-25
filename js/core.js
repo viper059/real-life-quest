@@ -22,7 +22,7 @@
     topup_gold: 'เติม Gold', topup_crystal: 'เติม Crystal', crystal_sent: 'ส่ง Crystal', crystal_received: 'ได้รับ Crystal', shop_buy: 'ซื้อของในร้าน', habit_gold: 'Gold จากกิจวัตร', food_buy: 'ซื้ออาหาร'
   };
   const ERR = [
-    ['not enough gold', 'Gold ไม่พอ'], ['not enough crystal', 'Crystal ไม่พอ'], ['quest not available', 'เควสต์นี้ไม่ว่างแล้ว'],
+    ['not enough gold', 'Gold ไม่พอ'], ['pantry full', 'ตู้เก็บของกินเต็ม (สูงสุด 10 จานต่อเมนู) กินก่อนค่อยซื้อเพิ่ม'], ['none left', 'ไม่มีของกินนี้เหลือแล้ว'], ['not enough crystal', 'Crystal ไม่พอ'], ['quest not available', 'เควสต์นี้ไม่ว่างแล้ว'],
     ['identity not verified', 'ต้องยืนยันตัวตนก่อน'], ['career rank too low', 'ขั้นอาชีพยังไม่ถึงที่งานนี้กำหนด'], ['account banned', 'บัญชีถูกระงับ'],
     ['family only', 'เฉพาะลูกในบ้านนี้'], ['own quest', 'เป็นเควสต์ของคุณเอง'], ['location required', 'ต้องปักหมุดตำแหน่งงาน'],
     ['too far from the job site', 'อยู่ไกลจากหน้างานเกินไป'], ['already checked in', 'เช็กอินอยู่แล้ว'], ['check out first', 'ต้องเช็กเอาต์ก่อน'],

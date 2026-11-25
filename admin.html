@@ -150,6 +150,7 @@ tr.sel td{background:var(--parchment-200)}
     { id: 'licenses', label: 'สมาคมวิชาชีพ', need: ['c.review', 'view'] },
     { id: 'monsters', label: 'มอนสเตอร์', need: ['q.review', 'view'] },
     { id: 'habits', label: 'เวลาทวงกิจวัตร', need: ['q.review', 'view'] },
+    { id: 'goldflow', label: 'ดุลเศรษฐกิจ Gold', need: ['m.topup', 'view'] },
     { id: 'topups', label: 'ยืนยันเติมเงิน', need: ['m.topup', 'view'] },
     { id: 'shop', label: 'ร้านค้า Crystal', need: ['m.shop', 'view'] },
     { id: 'guilds', label: 'กิลด์และกองทุน', need: ['g.fund', 'view'] },
@@ -608,6 +609,18 @@ tr.sel td{background:var(--parchment-200)}
       ${data.map((h) => `<tr><td><b>${esc(h.title)}</b>${h.active ? '' : ' <span class="small muted">(ปิดอยู่)</span>'}</td><td>${h.exp}</td>
         <td colspan="2"><form class="row" data-remind="${esc(h.id)}" style="gap:8px"><input type="time" name="t" value="${h.remind_at ? h.remind_at.slice(0, 5) : ''}" ${edit ? '' : 'disabled'} style="max-width:140px">
         ${edit ? '<button class="btn sec sm" type="submit">บันทึก</button>' : ''}</form></td></tr>`).join('')}</tbody></table></div>`;
+  };
+
+  VIEWS.goldflow = async () => {
+    const { data, error } = await sb.rpc('admin_gold_flow', { p_days: 14 });
+    if (error) throw error;
+    const rows = data.days, tin = rows.reduce((a, r) => a + Number(r.habit_in), 0), tout = rows.reduce((a, r) => a + Number(r.food_out) + Number(r.shop_out), 0);
+    $('content').innerHTML = `<div><h1 style="font-size:28px">ดุลเศรษฐกิจ Gold</h1><p class="muted" style="margin:4px 0 0">Gold ที่แจกจากกิจวัตร เทียบกับที่ถูกใช้ซื้ออาหารและของในร้าน (14 วันล่าสุด) · ถ้า “แจก” สูงกว่า “ใช้” ต่อเนื่อง Gold จะเฟ้อ ให้ลดเพดาน/อัตราแจกในการตั้งค่า (habit_gold_cap, habit_gold_pct)</p></div>
+      <div class="kpis"><div class="card kpi"><div class="small muted">Gold ในกระเป๋าทั้งระบบ</div><div class="v">${num(data.gold_in_wallets)}</div></div>
+        <div class="card kpi"><div class="small muted">แจกจากกิจวัตร (14 วัน)</div><div class="v">${num(tin)}</div></div>
+        <div class="card kpi"><div class="small muted">ใช้จ่าย (14 วัน)</div><div class="v">${num(tout)}</div></div></div>
+      <div class="tbl-wrap"><table style="min-width:520px"><thead><tr><th>วัน</th><th style="text-align:right">แจก</th><th style="text-align:right">ซื้ออาหาร</th><th style="text-align:right">ซื้อของร้าน</th><th style="text-align:right">สุทธิ</th></tr></thead><tbody>
+      ${rows.map((r) => { const net = Number(r.habit_in) - Number(r.food_out) - Number(r.shop_out); return `<tr><td>${esc(String(r.day).slice(0, 10))}</td><td style="text-align:right">${num(r.habit_in)}</td><td style="text-align:right">${num(r.food_out)}</td><td style="text-align:right">${num(r.shop_out)}</td><td style="text-align:right;color:${net > 0 ? 'var(--danger-ink)' : 'var(--teal-ink)'}"><b>${net > 0 ? '+' : ''}${num(net)}</b></td></tr>`; }).join('')}</tbody></table></div>`;
   };
 
   VIEWS.topups = async () => {
