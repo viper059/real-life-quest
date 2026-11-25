@@ -7,10 +7,12 @@
   App.loaders.food = async function () {
     const uid = S.user.id;
     if (S.qsub !== 'plan' || S.psub !== 'food') return;
-    const [f, mine] = await Promise.all([
+    const [f, mine, today] = await Promise.all([
       sb.from('food_items').select('*').order('sort'),
-      sb.from('user_food').select('food_id,qty').eq('user_id', uid).gt('qty', 0)
+      sb.from('user_food').select('food_id,qty').eq('user_id', uid).gt('qty', 0),
+      sb.rpc('my_food_today')
     ]);
+    S.foodToday = today.data || { eaten: 0, max: 4 };
     S.foods = f.data || [];
     S.pantry = Object.fromEntries((mine.data || []).map((r) => [r.food_id, r.qty]));
   };
@@ -34,16 +36,18 @@
     const H = S.habits || {}, cat = S.foodCat || 'all', gold = Number(S.wallet ? S.wallet.gold : 0);
     const foods = (S.foods || []).filter((f) => cat === 'all' || f.cat === cat);
     const mine = (S.foods || []).filter((f) => S.pantry && S.pantry[f.id] > 0);
+    const ft = S.foodToday || { eaten: 0, max: 4 }, full = ft.eaten >= ft.max;
     return `<div class="stack">
       <div class="card wood stack">
         <div class="row between"><b style="font-family:var(--font-display);font-size:18px">🍜 ร้านอาหารในเมือง</b><span class="small" style="color:var(--on-wood-muted)">มี ${num(gold)} G</span></div>
         <span class="small" style="color:var(--on-wood-muted)">ทำกิจวัตรได้ Gold วันละไม่เกิน ${num(H.gold_cap || 40)} G นำมาซื้อของกิน กินแล้วได้พลังเพิ่ม EXP หรือ Gold จากกิจวัตรชั่วคราว · Gold ในแอปถอนเป็นเงินจริงไม่ได้</span>
         ${App.buffBar(H)}
+        <span class="fchip ${full ? 'muted-chip' : 'gold-chip'}">🍽 กินวันนี้ ${ft.eaten} / ${ft.max} มื้อ${full ? ' · ครบแล้ว' : ''}</span>
       </div>
       ${mine.length ? `<div class="card stack"><b>🧺 ของกินที่ฉันมี</b>
         <div class="food-grid">${mine.map((f) => `<div class="food-card own">
           <div class="food-emoji" aria-hidden="true">${f.emoji}</div><b>${esc(f.name)}</b><span class="small muted">x${S.pantry[f.id]}</span>
-          <button class="btn action sm" data-food-eat="${f.id}">กินเลย</button></div>`).join('')}</div></div>` : ''}
+          <button class="btn ${full ? 'sec' : 'action'} sm" data-food-eat="${f.id}" ${full ? 'disabled' : ''}>${full ? 'กินครบแล้ววันนี้' : 'กินเลย'}</button></div>`).join('')}</div></div>` : ''}
       <div class="row scroll-x">${CAT.map(([k, v]) => `<button class="pill" data-food-cat="${k}" aria-pressed="${cat === k}">${v}</button>`).join('')}</div>
       <div class="food-grid">${foods.map((f) => {
         const can = gold >= f.price;
