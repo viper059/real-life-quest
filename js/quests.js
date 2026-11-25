@@ -58,6 +58,7 @@
       <div class="row">
         ${urgent ? `<span class="tag" style="background:var(--danger);color:#fff">ด่วน · ${mins} นาที</span>` : ''}
         <span class="tag" style="background:${c.bg};color:${c.fg}">${c.label}</span>
+        ${q.reward_card ? `<span class="tag" style="background:#efe3ff;color:#4b2a86">🎴 รางวัลการ์ด${(S.cards || []).find((x) => x.id === q.reward_card) ? ' · ' + esc((S.cards.find((x) => x.id === q.reward_card)).name) : ''}</span>` : ''}
         ${q.rank !== 'F' ? `<span class="rank">ขั้น ${esc(q.rank)}</span>` : ''}
         ${q.remote ? '<span class="tag" style="background:var(--parchment-200);color:var(--ink-soft)">ออนไลน์</span>' : d != null ? `<span class="small muted">${d < 1 ? Math.round(d * 1000) + ' ม.' : d.toFixed(1) + ' กม.'}</span>` : ''}
       </div>
@@ -155,6 +156,7 @@
         <label class="f">ต้องเสร็จภายใน (ไม่บังคับ)<input name="due" type="datetime-local"></label>
         <label class="f">ด่วน (นาที, ไม่บังคับ)<input name="urgent" type="number" min="10" max="1440" step="5" inputmode="numeric" placeholder="เช่น 60"></label>
       </div>
+      ${Object.entries(S.assocStock || {}).filter(([, n]) => n > 0).length ? `<label class="f">รางวัลเพิ่มเติม: การ์ดสมาคม (ไม่บังคับ — ล็อกจากสต็อกของคุณ 1 ใบ)<select name="rcard"><option value="">ไม่ให้การ์ด</option>${Object.entries(S.assocStock).filter(([, n]) => n > 0).map(([id, n]) => `<option value="${esc(id)}">${esc(((S.cards || []).find((x) => x.id === id) || {}).name || id)} (เหลือ ${n})</option>`).join('')}</select></label>` : ''}
       <label class="row small"><input type="checkbox" name="instant" style="width:20px;height:20px"> รับงานทันที — คนแรกที่ผ่านเงื่อนไขได้งานเลย (ไม่ต้องเลือกผู้สมัคร)</label>
       <fieldset class="card stack" style="margin:0"><legend class="small" style="font-weight:600;padding:0 6px">สถานที่ทำงาน</legend>
         <label class="row small"><input type="checkbox" name="remote" style="width:20px;height:20px"> งานออนไลน์ ไม่ต้องไปหน้างาน</label>
@@ -199,6 +201,7 @@
         p_lat: remote ? null : pos.lat, p_lng: remote ? null : pos.lng, p_address: remote ? null : f.elements.addr.value.trim() || null
       }, 'โพสต์เควสต์แล้ว');
       $('postSubmit') && ($('postSubmit').disabled = false);
+      if (id && f.elements.rcard && f.elements.rcard.value) await rpc('attach_quest_card', { p_quest: id, p_card: f.elements.rcard.value }, 'ตั้งการ์ดรางวัลแล้ว');
       if (id) { closeSheet(); App.setQsub('mine'); }
     };
   }

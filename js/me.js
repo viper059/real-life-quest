@@ -23,14 +23,16 @@
   };
   loaders.cards = async function () {
     const uid = S.user.id;
-    const [c, mine, d, done, pk] = await Promise.all([
+    const [c, mine, d, done, pk, ac] = await Promise.all([
       sb.from('job_cards').select('*').order('sort'),
       sb.from('user_cards').select('card_id').eq('user_id', uid),
       sb.from('decks').select('*').eq('user_id', uid).maybeSingle(),
       sb.from('quests').select('category').eq('worker_id', uid).eq('status', 'completed'),
-      sb.rpc('card_pack_info')
+      sb.rpc('card_pack_info'),
+      sb.from('association_cards').select('card_id,qty').eq('user_id', uid)
     ]);
     S.pack = pk.data || null;
+    S.assocStock = Object.fromEntries((ac.data || []).map((r) => [r.card_id, r.qty]));
     S.cards = c.data || []; S.myCards = new Set((mine.data || []).map((r) => r.card_id)); S.deck = d.data;
     S.doneByCat = {}; (done.data || []).forEach((q) => { S.doneByCat[q.category] = (S.doneByCat[q.category] || 0) + 1; });
   };
@@ -235,13 +237,25 @@
     return `<article class="card" style="display:flex;flex-direction:column;gap:6px;${owned ? '' : 'opacity:.75;border-style:dashed'}">
       <h3 style="font-size:16px">${esc(c.name)}</h3>
       <span class="small" style="color:var(--teal-ink)">EXP +${c.exp_bonus_pct}% ${c.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + esc((CATS[c.category] || {}).label || c.category)}${Object.keys(c.stats || {}).length ? ' · ' + Object.entries(c.stats).map(([s, v]) => s.toUpperCase() + ' +' + v).join(' ') : ''}</span>
-      <span class="small muted">${owned ? 'มีแล้ว' : c.source === 'special' ? 'ได้จากภารกิจพิเศษ · ' + esc(c.description) : c.source === 'boss' ? 'ได้จากตู้บอสในเกม · ' + esc(c.description) : c.source === 'shop' ? 'การ์ดกิลด์ · ' + esc(c.description) : (c.unlock_count < 9999 ? 'ปลดล็อกจากงานจริง: ' + esc(c.description) + ` (${Math.min(done, c.unlock_count)}/${c.unlock_count})` : esc(c.description) + ' · ได้จากการสุ่ม')}</span>
+      <span class="small muted">${owned ? 'มีแล้ว' : c.source === 'association' ? 'การ์ดสมาคม ได้จากภารกิจที่สมาคมตั้งรางวัล · ' + esc(c.description) : c.source === 'boss' ? 'ได้จากตู้บอสในเกม · ' + esc(c.description) : c.source === 'shop' ? 'การ์ดกิลด์ · ' + esc(c.description) : (c.unlock_count < 9999 ? 'ปลดล็อกจากงานจริง: ' + esc(c.description) + ` (${Math.min(done, c.unlock_count)}/${c.unlock_count})` : esc(c.description) + ' · ได้จากการสุ่ม')}</span>
       <span class="small" style="color:var(--ink-soft)">ระดับ: ${esc(c.rarity)}</span>
       ${!owned && c.source === 'shop' && (c.shop_price || price(c.rarity)) ? `<button type="button" class="btn sec sm" data-cardbuy="${c.id}" ${gold >= (c.shop_price || price(c.rarity)) ? '' : 'disabled'}>ซื้อ ${num(c.shop_price || price(c.rarity))} G</button>` : ''}</article>`;
   }
   const DSLOTS = [['main', 'main_card', 'การ์ดหลัก'], ['s1', 'support1', 'เสริม 1'], ['s2', 'support2', 'เสริม 2'], ['s3', 'support3', 'เสริม 3']];
   const bonusText = (c) => `EXP +${c.exp_bonus_pct}% ${c.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + ((CATS[c.category] || {}).label || '')}`;
   const statsText = (c) => { const e = Object.entries(c.stats || {}); return e.length ? e.map(([k, v]) => k.toUpperCase() + ' +' + v).join(' · ') : 'ไม่มีค่าสถานะเพิ่ม'; };
+  function renderAssoc() {
+    const el = $('assocPanel'); if (!el) return;
+    const mine = (S.cards || []).filter((c) => c.source === 'association' && (S.myLicenses || new Set()).has(c.assoc_occupation));
+    if (!mine.length) { el.innerHTML = ''; return; }
+    const gold = Number(S.wallet ? S.wallet.gold : 0), stock = S.assocStock || {};
+    el.innerHTML = `<div class="card wood stack">
+      <b style="font-family:var(--font-display);font-size:17px">🏛️ คลังการ์ดสมาคม (คนควบคุม)</b>
+      <span class="small" style="color:var(--on-wood-muted)">ซื้อการ์ดจากระบบด้วย Gold ของคุณ แล้วตั้งเป็นรางวัลตอนโพสต์เควสต์ ผู้ทำสำเร็จได้การ์ด ถ้ายกเลิกเควสต์การ์ดคืนสต็อก การ์ดสมาคมสุ่มและซื้อโดยผู้เล่นทั่วไปไม่ได้</span>
+      ${mine.map((c) => { const pr = c.shop_price || price(c.rarity); return `<div class="row between" style="gap:8px;flex-wrap:wrap"><span><b>${esc(c.name)}</b> <span class="small" style="color:var(--on-wood-muted)">${esc(c.rarity)} · EXP +${c.exp_bonus_pct}% · ในสต็อก ${num(stock[c.id] || 0)}</span></span>
+        <button type="button" class="btn sec sm" data-assocbuy="${esc(c.id)}" ${pr && gold >= pr ? '' : 'disabled'}>ซื้อ ${pr ? num(pr) + ' G' : '—'}</button></div>`; }).join('')}
+    </div>`;
+  }
   function renderPack() {
     const el = $('packPanel'), P = S.pack; if (!el) return;
     if (!P) { el.innerHTML = ''; return; }
@@ -278,7 +292,7 @@
       </div>
       <button type="button" class="btn primary" data-dsave="1" ${dirty && dr.main ? '' : 'disabled'}>${dirty ? 'บันทึกเด็ค' : 'บันทึกแล้ว'}</button>
     </div>`;
-    renderPack();
+    renderPack(); renderAssoc();
     $('cardList').innerHTML = S.cards.map(cardTile).join('');
   }
   renderers.push(renderChar, renderDeck);
@@ -354,6 +368,13 @@
     const r = await rpc('draw_card');
     if (r && r.card) openSheet('ได้การ์ดแล้ว!', `<div class="stack" style="text-align:center"><div class="card wood stack"><span class="small" style="color:var(--gold-500)">${esc(r.rarity)}</span><b style="font-family:var(--font-display);font-size:24px">${esc(r.name)}</b><span class="small" style="color:#d9ede4">EXP +${r.exp_bonus_pct}% ${r.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + esc((CATS[r.category] || {}).label || '')}</span></div>${r.dupe ? `<p class="small">ซ้ำกับที่มีอยู่ — คืน ${num(r.refund)} C</p>` : '<p class="small">เพิ่มเข้าคลังแล้ว ไปใส่ในช่องการ์ดได้เลย</p>'}<button type="button" class="btn primary" id="packOk">ตกลง</button></div>`);
     const ok = document.getElementById('packOk'); if (ok) ok.onclick = () => App.closeSheet();
+  });
+  $('assocPanel').addEventListener('click', async (ev) => {
+    const b = ev.target.closest('[data-assocbuy]'); if (!b) return;
+    const c = S.cards.find((x) => x.id === b.dataset.assocbuy); if (!c) return;
+    const pr = c.shop_price || price(c.rarity);
+    if (!confirm(`ซื้อการ์ดสมาคม “${c.name}” 1 ใบ ราคา ${num(pr)} G ใช่ไหม?`)) return;
+    b.disabled = true; await rpc('buy_assoc_card', { p_card: c.id, p_qty: 1 }, `ซื้อ ${c.name} เข้าสต็อกแล้ว`);
   });
   $('cardList').addEventListener('click', async (ev) => {
     const b = ev.target.closest('[data-cardbuy]'); if (!b) return;
