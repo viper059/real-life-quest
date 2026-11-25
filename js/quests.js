@@ -146,9 +146,9 @@
     return `<form id="postForm" class="stack">
       <label class="f">ชื่องาน<input name="title" required minlength="4" maxlength="120" placeholder="เช่น ส่งเอกสารด่วนไปสีลม"></label>
       <label class="f">รายละเอียด<textarea name="desc" rows="3" maxlength="2000" placeholder="บอกสิ่งที่ต้องทำ เครื่องมือที่ต้องใช้ จุดนัดพบ"></textarea></label>
-      <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+      <div class="form2">
         <label class="f">อาชีพที่ต้องการ<select name="cat"><option value="general">ทั่วไป (ใครก็รับได้)</option>${occs.map((o) => `<option value="${o.id}">${esc(o.label)}${o.license_required ? ' · ต้องมีใบอนุญาต' : ''}</option>`).join('')}</select></label>
-        <label class="f">ขั้นขั้นต่ำของผู้รับ<select name="rank">${RANKS.slice(0, 6).map((r) => `<option value="${r}">${r} · ${RANK_LABEL[r]}</option>`).join('')}</select></label>
+        <label class="f">ขั้นต่ำของผู้รับ<select name="rank">${RANKS.slice(0, 6).map((r) => `<option value="${r}">${r} · ${RANK_LABEL[r]}</option>`).join('')}</select></label>
         <label class="f">ค่าจ้าง (บาท) — คุณจ่ายให้ผู้รับงานเอง<input name="wage" type="number" min="1" max="100000" step="1" required inputmode="numeric"></label>
         <label class="f">วิธีจ่ายค่าจ้าง<select name="paym"><option value="either">พร้อมเพย์หรือเงินสด</option><option value="promptpay">โอนพร้อมเพย์</option><option value="cash">เงินสดหน้างาน</option></select></label>
         <label class="f">เวลาทำโดยประมาณ (นาที)<input name="est" type="number" min="10" max="10080" step="5" value="60" required inputmode="numeric"></label>

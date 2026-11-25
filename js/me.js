@@ -104,7 +104,7 @@
     const avail = S.occupations.filter((o) => !started.has(o.id));
     const pendingImports = (S.imports || []).filter((i) => i.status === 'pending');
     return `<div class="section" id="careerSection"><div class="row between"><h2 style="font-size:19px">อาชีพและขั้น</h2></div>
-      <p class="small muted" style="margin:0">ผู้รับงานต้องตรงกับอาชีพและถึงขั้นที่งานกำหนด · งานทั่วไปและขั้น F ใครก็รับได้หลังยืนยันตัวตน · F→E ≥ 3 เดือน, E→D ≥ 2 ปี, เอ็กซ์เพิร์ต→มาสเตอร์ ≥ 5 ปี</p>
+      <details class="dash"><summary class="small" style="cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center">ℹ️ กติกาขั้นอาชีพ</summary><p class="small muted" style="margin:0">ผู้รับงานต้องตรงกับอาชีพและถึงขั้นที่งานกำหนด · งานทั่วไปและขั้น F ใครก็รับได้หลังยืนยันตัวตน · F→E ≥ 3 เดือน, E→D ≥ 2 ปี, เอ็กซ์เพิร์ต→มาสเตอร์ ≥ 5 ปี</p></details>
       <div class="grid" style="align-items:start">${S.careers.map(careerCard).join('') || '<div class="empty"><b>สถานะปัจจุบัน: โนวิส</b><br><span class="small muted">ยังไม่มีอาชีพ — เลือกอาชีพแรกด้านล่างเพื่อเริ่มเส้นทางอาชีพ</span></div>'}</div>
       <details class="dash" style="margin-top:8px"><summary class="small" style="cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center">➕ เริ่มอาชีพใหม่ · เทียบโอนประสบการณ์ · รับรองเพื่อนร่วมงาน</summary>
       <div class="grid" style="align-items:start">
@@ -168,9 +168,9 @@
           <span class="small muted">ได้ 3 แต้มทุกเลเวลอัป · การ์ดในเด็คเพิ่มค่าสถานะ</span></div>
       </div></div>
       ${renderCareers()}
-      <div class="section"><form class="card row" id="nameForm" style="align-items:flex-end"><label class="f" style="flex:1 1 200px">ชื่อที่แสดง<input id="nameInput" maxlength="40" value="${esc(p.display_name || '')}"></label><button class="btn sec" type="submit">บันทึกชื่อ</button></form>
+      <div class="section"><details class="dash"><summary class="small" style="cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center">✏️ แก้ชื่อที่แสดง · วันเกิด</summary><form class="card row" id="nameForm" style="align-items:flex-end"><label class="f" style="flex:1 1 200px">ชื่อที่แสดง<input id="nameInput" maxlength="40" value="${esc(p.display_name || '')}"></label><button class="btn sec" type="submit">บันทึกชื่อ</button></form>
       <form class="card row" id="birthdateForm" style="align-items:flex-end"><label class="f" style="flex:1 1 200px">วันเกิด<input id="birthdateInput" type="date" max="${new Date().toISOString().slice(0, 10)}" value="${esc((S.priv && S.priv.birthdate) || '')}"></label><button class="btn sec" type="submit">บันทึกวันเกิด</button></form>
-      <p class="small muted" style="margin:4px 0 0">ใช้แสดงวันเกิดของคุณให้สมาชิกกิลด์เห็นแค่วัน/เดือน (ไม่โชว์ปีเกิด) เพื่อฉลองกัน</p></div>`;
+      <p class="small muted" style="margin:4px 0 0">ใช้แสดงวันเกิดของคุณให้สมาชิกกิลด์เห็นแค่วัน/เดือน (ไม่โชว์ปีเกิด) เพื่อฉลองกัน</p></details></div>`;
     mountAvatar();
   }
 

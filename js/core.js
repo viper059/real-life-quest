@@ -360,7 +360,7 @@
       ${pushOn ? '' : `<div class="card row"><span style="flex:1">รับแจ้งเตือนแม้ไม่ได้เปิดแอป (ภารกิจสำเร็จ, ภารกิจที่ยังไม่ทำ, มีคนรับงาน, ได้เงิน)</span><button class="btn action sm" id="pushBtn" type="button">เปิดแจ้งเตือน</button></div>`}
       <div class="card stack" style="gap:8px">
         <label class="row small"><input type="checkbox" id="nfSuccess" ${P.notify_success === false ? '' : 'checked'}> แจ้งเตือนเมื่อทำภารกิจสำเร็จ (บอก EXP ที่ได้)</label>
-        <label class="row small"><input type="checkbox" id="nfRemind" ${P.notify_remind === false ? '' : 'checked'}> แจ้งเตือนทวงภารกิจที่ยังไม่ได้ทำ</label>
+        <label class="row small"><input type="checkbox" id="nfRemind" ${P.notify_remind === false ? '' : 'checked'}> แจ้งเตือนเมื่อภารกิจยังไม่ได้ทำ</label>
         <label class="row small"><input type="checkbox" id="nfSound" ${soundOn() ? 'checked' : ''}> มีเสียงพูดอ่านภารกิจตอนเปิดแอปอยู่</label></div>
       <div class="card" style="padding:4px 14px">${list}</div></div>`);
     const savePrefs = () => rpc('set_notify_prefs', { p_success: $('nfSuccess').checked, p_remind: $('nfRemind').checked });
@@ -424,6 +424,7 @@
     } catch (e) { $('authMsg').textContent = errText(e); }
     finally { $('authSubmit').disabled = false; }
   };
+  $('showPw').onchange = (e) => { $('authPassword').type = e.target.checked ? 'text' : 'password'; };
   $('signOut').onclick = () => { if (confirm('ออกจากระบบใช่ไหม?')) sb.auth.signOut(); };
 
   $('forgotLink').onclick = async () => {
@@ -507,17 +508,21 @@
     const el = document.createElement('div'); el.className = 'splash';
     el.innerHTML = `<div class="sp-card"><div class="sp-logo" aria-hidden="true">⚔️</div><div class="sp-title">REAL LIFE QUEST</div>
       <div class="sp-sub">${first ? 'ยินดีต้อนรับสู่เกมชีวิตจริง' : 'พร้อมออกผจญภัยอีกครั้ง'}</div>
-      <button class="btn action" id="spGo" type="button">แตะเพื่อเริ่ม</button></div><div class="sp-status" aria-hidden="true">STATUS ON</div>`;
+      <button class="btn action" id="spGo" type="button">แตะเพื่อเริ่ม</button><button class="sp-skip" id="spSkip" type="button">ข้าม</button></div><div class="sp-status" aria-hidden="true">STATUS ON</div>`;
     document.body.appendChild(el); document.body.style.overflow = 'hidden';
     let started = false;
+    let opened = false;
     const open = () => {
+      if (opened) return; opened = true;
       el.classList.add('open');
       setTimeout(() => { el.remove(); document.body.style.overflow = ''; }, 800);
     };
+    el.querySelector('#spSkip').onclick = () => { try { sessionStorage.setItem('rlq_splash', '1'); localStorage.setItem('rlq_welcomed', '1'); } catch (_) { /* ignore */ } started = true; open(); };
     el.querySelector('#spGo').onclick = () => {
       if (started) return; started = true;
       try { sessionStorage.setItem('rlq_splash', '1'); localStorage.setItem('rlq_welcomed', '1'); } catch (_) { /* ignore */ }
       el.classList.add('go'); startupSound();
+      setTimeout(open, 7000); // never leave the player stuck if the voice stalls
       const status = () => speak('Status on', () => setTimeout(open, 250));
       if (first) speak('Welcome to Real Life Quest', status); else status();
     };

@@ -149,6 +149,7 @@
     const list = S.birthdays || [];
     const html = list.length ? list.map(birthdayRow).join('') : '<div class="small muted">ยังไม่มีข้อมูลวันเกิดในกิลด์ — ตั้งวันเกิดของคุณได้ที่แท็บตัวละคร</div>';
     const side = $('birthdayList'); if (side) side.innerHTML = html;
+    const sp = $('sidePanel'); if (sp) sp.classList.toggle('empty', !list.length);
     const inline = $('guildBirthdays');
     if (inline) { inline.classList.toggle('hidden', !S.myGuild); if (S.myGuild) inline.innerHTML = `<h3 style="font-size:15px;margin:0">วันเกิดเพื่อนกิลด์</h3>${html}`; }
   }
