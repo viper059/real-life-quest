@@ -110,8 +110,8 @@ label.f input:focus,label.f select:focus,label.f textarea:focus{outline:2px soli
 .qr svg{display:block;width:220px;height:220px}
 
 /* sheet */
-.sheet{position:fixed;inset:0;z-index:40;background:rgba(42,27,17,.55);display:flex;justify-content:center;align-items:flex-end}
-.sheet-in{background:var(--parchment-300);width:100%;max-width:720px;max-height:94vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:0 16px 24px}
+.sheet{position:fixed;inset:0;z-index:40;padding-top:env(safe-area-inset-top);background:rgba(42,27,17,.55);display:flex;justify-content:center;align-items:flex-end}
+.sheet-in{background:var(--parchment-300);width:100%;max-width:720px;max-height:94vh;max-height:calc(100dvh - env(safe-area-inset-top) - 56px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;border-radius:18px 18px 0 0;padding:0 16px calc(24px + env(safe-area-inset-bottom))}
 @media (min-width:760px){.sheet{align-items:center}.sheet-in{border-radius:18px;max-height:90vh}}
 .sheet-head{position:sticky;top:0;background:var(--parchment-300);display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 0 10px;border-bottom:1px dashed var(--brass-500);margin-bottom:12px;z-index:1}
 .sheet-head h2{font-size:19px}
