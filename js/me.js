@@ -233,20 +233,32 @@
       <span class="small" style="color:var(--teal-ink)">EXP +${c.exp_bonus_pct}% ${c.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + esc((CATS[c.category] || {}).label || c.category)}${Object.keys(c.stats || {}).length ? ' · ' + Object.entries(c.stats).map(([s, v]) => s.toUpperCase() + ' +' + v).join(' ') : ''}</span>
       <span class="small muted">${owned ? 'มีแล้ว' : 'ปลดล็อก: ' + esc(c.description) + ` (${Math.min(done, c.unlock_count)}/${c.unlock_count})`}</span></article>`;
   }
+  const DSLOTS = [['main', 'main_card', 'การ์ดหลัก'], ['s1', 'support1', 'เสริม 1'], ['s2', 'support2', 'เสริม 2'], ['s3', 'support3', 'เสริม 3']];
+  const bonusText = (c) => `EXP +${c.exp_bonus_pct}% ${c.category === 'general' ? 'ทุกเควสต์' : 'เควสต์' + ((CATS[c.category] || {}).label || '')}`;
+  const statsText = (c) => { const e = Object.entries(c.stats || {}); return e.length ? e.map(([k, v]) => k.toUpperCase() + ' +' + v).join(' · ') : 'ไม่มีค่าสถานะเพิ่ม'; };
   function renderDeck() {
     const d = S.deck || {}, owned = S.cards.filter((c) => S.myCards.has(c.id));
-    const sel = (name, cur, empty) => `<select name="${name}">${empty ? '<option value="">— ว่าง —</option>' : ''}${owned.map((c) => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>`;
-    const main = cardById(d.main_card);
-    $('deckPanel').innerHTML = `<div class="grid" style="align-items:start">
-      ${main ? `<div style="background:#2f4a3e;border:3px solid var(--gold-500);border-radius:14px;padding:16px;color:var(--on-wood);display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 0 var(--brass-600);min-height:200px;justify-content:flex-end">
-        <span style="font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--gold-500)">อาชีพหลัก · MAIN JOB</span>
-        <h2 style="font-size:24px">${esc(main.name)}</h2>
-        <span class="small" style="color:#d9ede4">EXP +${main.exp_bonus_pct}% ${main.category === 'general' ? 'ทุกเควสต์' : 'เมื่อทำเควสต์' + esc((CATS[main.category] || {}).label || '')}</span></div>` : '<div class="empty">ยังไม่ได้เลือกการ์ดหลัก</div>'}
-      <form id="deckForm" class="card stack">
-        <label class="f">การ์ดหลัก (ได้โบนัส EXP)${sel('main', d.main_card, false)}</label>
-        <label class="f">การ์ดเสริม 1${sel('s1', d.support1, true)}</label><label class="f">การ์ดเสริม 2${sel('s2', d.support2, true)}</label><label class="f">การ์ดเสริม 3${sel('s3', d.support3, true)}</label>
-        <button class="btn primary" type="submit">บันทึกเด็ค</button>
-        <span class="small muted">การ์ดอาชีพเพิ่ม EXP ชีวิต ไม่เพิ่มขั้นอาชีพ — ขั้นอาชีพได้จากงานจริงเท่านั้น</span></form></div>`;
+    const saved = DSLOTS.map(([k, col]) => d[col] || '').join('|');
+    if (S.deckSavedKey !== saved) { S.deckSavedKey = saved; S.deckDraft = Object.fromEntries(DSLOTS.map(([k, col]) => [k, d[col] || ''])); }
+    const dr = S.deckDraft, cur = S.deckSlot || 'main', dirty = DSLOTS.some(([k, col]) => (dr[k] || '') !== (d[col] || ''));
+    const main = cardById(dr.main);
+    const slot = ([k, , label]) => { const c = cardById(dr[k]), on = k === cur;
+      const big = k === 'main';
+      return `<button type="button" data-dslot="${k}" aria-pressed="${on}" style="text-align:left;display:flex;flex-direction:column;gap:4px;justify-content:${big ? 'flex-end' : 'center'};min-height:${big ? 150 : 84}px;padding:12px;border-radius:14px;cursor:pointer;color:var(--on-wood);background:${big ? '#2f4a3e' : 'var(--wood-800)'};border:${on ? '3px solid var(--gold-500)' : '2px dashed var(--wood-line)'};${big ? 'grid-column:1/-1' : ''}">
+        <span style="font-family:var(--font-rpg);font-weight:700;font-size:12px;color:var(--gold-500)">${big ? 'อาชีพหลัก · MAIN JOB' : label}</span>
+        ${c ? `<b style="font-size:${big ? 22 : 15}px">${esc(c.name)}</b><span class="small" style="color:#d9ede4">${big ? bonusText(c) : statsText(c)}</span>` : `<span class="small" style="color:var(--on-wood-muted)">ว่าง — แตะเพื่อเลือกการ์ด</span>`}</button>`; };
+    const slotLabel = (DSLOTS.find((x) => x[0] === cur) || [])[2];
+    $('deckPanel').innerHTML = `<div class="stack">
+      <p class="small muted" style="margin:0">การ์ดหลักให้โบนัส EXP เมื่อทำเควสต์ตามหมวด · การ์ดเสริมเพิ่มค่าสถานะ · ไม่เพิ่มขั้นอาชีพ (ขั้นได้จากงานจริงเท่านั้น)</p>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${DSLOTS.map(slot).join('')}</div>
+      <div class="card stack"><b>เลือกการ์ดใส่ช่อง “${esc(slotLabel)}”</b>
+        ${owned.length ? `<div class="stack" style="gap:6px">${owned.map((c) => { const used = DSLOTS.find(([k]) => dr[k] === c.id); const here = dr[cur] === c.id;
+          return `<button type="button" class="btn ${here ? 'primary' : 'sec'}" data-dpick="${c.id}" style="justify-content:space-between;text-align:left;height:auto;padding:8px 12px"><span><b>${esc(c.name)}</b><br><span class="small">${bonusText(c)} · ${statsText(c)}</span></span><span class="small">${here ? '✓ ใช้อยู่' : used ? 'อยู่ช่อง' + used[2] : 'ใส่'}</span></button>`; }).join('')}
+          ${cur !== 'main' && dr[cur] ? '<button type="button" class="btn sec sm" data-dclear="1">เอาการ์ดออกจากช่องนี้</button>' : ''}</div>`
+          : '<div class="empty">ยังไม่มีการ์ด — ปลดล็อกจากการทำเควสต์ตามหมวด ดูเงื่อนไขในคลังการ์ดด้านล่าง</div>'}
+      </div>
+      <button type="button" class="btn primary" data-dsave="1" ${dirty && dr.main ? '' : 'disabled'}>${dirty ? 'บันทึกเด็ค' : 'บันทึกแล้ว'}</button>
+    </div>`;
     $('cardList').innerHTML = S.cards.map(cardTile).join('');
   }
   renderers.push(renderChar, renderDeck);
@@ -316,9 +328,14 @@
     } catch (e) { toast(App.errText(e), true); }
     if (btn && btn.isConnected) btn.disabled = false;
   });
-  $('deckPanel').addEventListener('submit', async (ev) => {
-    ev.preventDefault(); const f = ev.target, v = (n) => f.elements[n].value || null;
-    await rpc('set_deck', { p_main: v('main'), p_s1: v('s1'), p_s2: v('s2'), p_s3: v('s3') }, 'บันทึกเด็คแล้ว');
+  $('deckPanel').addEventListener('click', async (ev) => {
+    const t = ev.target.closest('button'); if (!t) return;
+    const dr = S.deckDraft; if (!dr) return;
+    if (t.dataset.dslot) { S.deckSlot = t.dataset.dslot; renderDeck(); return; }
+    const cur = S.deckSlot || 'main';
+    if (t.dataset.dpick) { const id = t.dataset.dpick; const other = DSLOTS.find(([k]) => k !== cur && dr[k] === id); if (other) dr[other[0]] = dr[cur] || ''; dr[cur] = id; renderDeck(); return; }
+    if (t.dataset.dclear) { dr[cur] = ''; renderDeck(); return; }
+    if (t.dataset.dsave) { t.disabled = true; await rpc('set_deck', { p_main: dr.main || null, p_s1: dr.s1 || null, p_s2: dr.s2 || null, p_s3: dr.s3 || null }, 'บันทึกเด็คแล้ว'); }
   });
 
   Object.assign(App, { openKyc, levelInfo });
