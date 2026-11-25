@@ -260,14 +260,26 @@
   let sheetOnClose = null;
   function openSheet(title, html, onClose) {
     $('sheetTitle').textContent = title; $('sheetBody').innerHTML = html;
+    // give the sheet its own history entry so the phone's Back button closes it instead of leaving the app
+    if ($('sheet').classList.contains('hidden') && !sheetPushed && !pendingBack) { try { history.pushState({ rlqSheet: 1 }, '', location.href); sheetPushed = true; } catch (_) { /* ignore */ } }
     $('sheet').classList.remove('hidden'); document.body.style.overflow = 'hidden';
     sheetOnClose = onClose || null;
   }
-  function closeSheet() {
+  let sheetPushed = false, pendingBack = 0;
+  function closeSheet(fromPop) {
     $('sheet').classList.add('hidden'); document.body.style.overflow = '';
     S.openQuest = null; if (sheetOnClose) { const f = sheetOnClose; sheetOnClose = null; f(); }
     if (location.hash.startsWith('#quest-')) history.replaceState(null, '', location.pathname + location.search);
+    if (sheetPushed) { sheetPushed = false; if (fromPop !== true) { try { pendingBack++; history.back(); } catch (_) { /* ignore */ } } }
   }
+  window.addEventListener('popstate', () => {
+    if (pendingBack > 0) { // our own history.back() finished; if a new sheet opened meanwhile, give it an entry now
+      pendingBack--;
+      if (!pendingBack && !$('sheet').classList.contains('hidden') && !sheetPushed) { try { history.pushState({ rlqSheet: 1 }, '', location.href); sheetPushed = true; } catch (_) { /* ignore */ } }
+      return;
+    }
+    if (!$('sheet').classList.contains('hidden')) closeSheet(true);
+  });
   $('sheetClose').onclick = closeSheet;
   $('sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') closeSheet(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('sheet').classList.contains('hidden')) closeSheet(); });
